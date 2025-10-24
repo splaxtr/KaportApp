@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "176601747513",
+    "project_id": "kaportapp",
+    "storage_bucket": "kaportapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:176601747513:android:808b62ff863b9c15a27de8",
+        "android_client_info": {
+          "package_name": "com.splaxtr.kaportapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEMbHfdNkTVyP9kSc7nPKyKHQ_8CLbs8A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

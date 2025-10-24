@@ -1,0 +1,182 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function (custom claims kullanıyorsanız)
+    // function getUserRole() {
+    //   return request.auth.token.role;
+    // }
+
+    // Helper function (mevcut yöntemle)
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return request.auth != null && getUserData().role == "admin";
+    }
+
+    function isSameShop(shopId) {
+      return getUserData().shopId == shopId;
+    }
+
+    // --- USERS ---
+    match /users/{userId} {
+      // Kullanıcı kendi verisini okuyabilir
+      // VEYA admin tüm kullanıcıları okuyabilir
+      // VEYA owner tüm kullanıcıları okuyabilir (çalışan atamak için)
+      // VEYA aynı shop'taki kullanıcıları okuyabilir
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        isAdmin() ||
+        getUserData().role == "owner" ||
+        resource.data.shopId == getUserData().shopId
+      );
+
+      // Yeni kayıt: Kullanıcı kendi kaydını employee olarak oluşturabilir
+      allow create: if request.auth != null &&
+        request.auth.uid == userId &&
+        request.resource.data.role == "employee" &&
+        request.resource.data.email == request.auth.token.email;
+
+      // Kendi adını güncelleyebilir (PASSWORD FIELD KALDIRILDI!)
+      allow update: if request.auth != null &&
+        request.auth.uid == userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name"]);
+
+      // Admin tüm kullanıcıları yönetebilir
+      allow create, update, delete: if isAdmin();
+
+      // Owner kendi dükkanındaki kullanıcıları yönetebilir
+      allow update, delete: if request.auth != null &&
+        resource.data.shopId != null &&
+        get(/databases/$(database)/documents/shops/$(resource.data.shopId)).data.ownerId == request.auth.uid;
+
+      // Owner atanmamış kullanıcıları kendi dükkanına atayabilir (shopId ve role güncellemesi)
+      allow update: if request.auth != null &&
+        getUserData().role == "owner" &&
+        (resource.data.shopId == null || resource.data.shopId == "") &&
+        request.resource.data.shopId == getUserData().shopId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["shopId", "role"]);
+    }
+
+    // --- SHOPS ---
+    match /shops/{shopId} {
+      // Admin tüm dükkanları görebilir/yönetebilir
+      allow create, update, delete: if isAdmin();
+
+      // Admin veya Owner kendi dükkanını okuyabilir
+      allow read: if request.auth != null && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        getUserData().shopId == shopId
+      );
+
+      // Owner kendi dükkanının ismini ve users listesini düzenleyebilir
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.ownerId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name"]) ||
+        (
+          request.auth.uid == resource.data.ownerId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(["users"])
+        );
+    }
+
+    // --- VEHICLES ---
+    match /vehicles/{vehicleId} {
+      // CREATE: shopId kontrolü request.resource.data'dan
+      allow create: if request.auth != null && (
+        isAdmin() ||
+        (
+          request.resource.data.shopId == getUserData().shopId &&
+          getUserData().role in ["owner", "employee"]
+        )
+      );
+
+      // READ, UPDATE, DELETE: shopId kontrolü resource.data'dan
+      allow read, update, delete: if request.auth != null && (
+        isAdmin() ||
+        (
+          resource.data.shopId == getUserData().shopId &&
+          getUserData().role in ["owner", "employee"]
+        )
+      );
+    }
+
+    // --- CARS --- (VEHICLES ile aynı - hangisini kullanıyorsanız)
+    match /cars/{carId} {
+      allow create: if request.auth != null && (
+        isAdmin() ||
+        (
+          request.resource.data.shopId == getUserData().shopId &&
+          getUserData().role in ["owner", "employee"]
+        )
+      );
+
+      allow read, update, delete: if request.auth != null && (
+        isAdmin() ||
+        (
+          resource.data.shopId == getUserData().shopId &&
+          getUserData().role in ["owner", "employee"]
+        )
+      );
+
+      // --- carParts alt koleksiyonu ---
+      match /parts/{partId} {
+        allow create: if request.auth != null && (
+          isAdmin() ||
+          (
+            request.resource.data.shopId == getUserData().shopId &&
+            getUserData().role in ["owner", "employee"]
+          )
+        );
+
+        allow read, update, delete: if request.auth != null && (
+          isAdmin() ||
+          (
+            resource.data.shopId == getUserData().shopId &&
+            getUserData().role in ["owner", "employee"]
+          )
+        );
+      }
+    }
+
+    // --- PARTS --- (Root collection)
+    match /parts/{partId} {
+      allow create: if request.auth != null && (
+        isAdmin() ||
+        (
+          request.resource.data.shopId == getUserData().shopId &&
+          getUserData().role in ["owner", "employee"]
+        )
+      );
+
+      allow read, update, delete: if request.auth != null && (
+        isAdmin() ||
+        (
+          resource.data.shopId == getUserData().shopId &&
+          getUserData().role in ["owner", "employee"]
+        )
+      );
+    }
+
+    // --- CAR PARTS --- (Root collection - used by CarPartService)
+    match /carParts/{carPartId} {
+      allow create: if request.auth != null && (
+        isAdmin() ||
+        (
+          request.resource.data.shopId == getUserData().shopId &&
+          getUserData().role in ["owner", "employee"]
+        )
+      );
+
+      allow read, update, delete: if request.auth != null && (
+        isAdmin() ||
+        (
+          resource.data.shopId == getUserData().shopId &&
+          getUserData().role in ["owner", "employee"]
+        )
+      );
+    }
+  }
+}

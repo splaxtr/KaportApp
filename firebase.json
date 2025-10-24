@@ -1,0 +1,25 @@
+{
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "kaportapp",
+                    "appId": "1:176601747513:android:808b62ff863b9c15a27de8",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "kaportapp",
+                    "configurations": {
+                        "android": "1:176601747513:android:808b62ff863b9c15a27de8",
+                        "ios": "1:176601747513:ios:0b0be11e97e4c7e4a27de8",
+                        "macos": "1:176601747513:ios:0b0be11e97e4c7e4a27de8",
+                        "web": "1:176601747513:web:e1fc6813cd00ae61a27de8",
+                        "windows": "1:176601747513:web:1fd2f64ca01ea854a27de8"
+                    }
+                }
+            }
+        }
+    }
+}
