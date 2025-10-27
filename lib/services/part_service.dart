@@ -17,11 +17,13 @@ class PartServiceException implements Exception {
 /// Service for managing vehicle parts in Firestore
 class PartService {
   PartService({FirebaseFirestore? firestore})
-      : this._(firestore ?? FirebaseFirestore.instance);
+    : this._(firestore ?? FirebaseFirestore.instance);
 
   PartService._(FirebaseFirestore firestore)
-      : _partsCollection = firestore.collection('parts');
+    : _firestore = firestore,
+      _partsCollection = firestore.collection('parts');
 
+  final FirebaseFirestore _firestore;
   final CollectionReference<Map<String, dynamic>> _partsCollection;
 
   /// Add a new part to the collection
@@ -44,6 +46,42 @@ class PartService {
       debugPrint('PartService.addItem error: $exception');
       throw PartServiceException(
         'Parça eklenemedi: ${exception.message ?? exception.code}',
+      );
+    }
+  }
+
+  Future<void> addItems({
+    required List<PartModel> models,
+    required UserModel actor,
+  }) async {
+    if (actor.role != 'owner' && actor.role != 'employee') {
+      throw PartServiceException('Yetkisiz işlem');
+    }
+
+    if (models.isEmpty) {
+      return;
+    }
+
+    for (final model in models) {
+      if (model.shopId != actor.shopId) {
+        throw PartServiceException(
+          'Parçalar sadece kendi dükkanınıza eklenebilir',
+        );
+      }
+    }
+
+    try {
+      final batch = _firestore.batch();
+      for (final model in models) {
+        final data = model.toFirestore();
+        data['createdAt'] ??= FieldValue.serverTimestamp();
+        batch.set(_partsCollection.doc(model.id), data);
+      }
+      await batch.commit();
+    } on FirebaseException catch (exception) {
+      debugPrint('PartService.addItems error: $exception');
+      throw PartServiceException(
+        'Parçalar eklenemedi: ${exception.message ?? exception.code}',
       );
     }
   }
@@ -165,9 +203,8 @@ class PartService {
         .where('shopId', isEqualTo: shopId)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map(PartModel.fromSnapshot)
-              .toList(growable: false),
+          (snapshot) =>
+              snapshot.docs.map(PartModel.fromSnapshot).toList(growable: false),
         );
   }
 
@@ -179,9 +216,8 @@ class PartService {
         .where('shopId', isEqualTo: shopId)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map(PartModel.fromSnapshot)
-              .toList(growable: false),
+          (snapshot) =>
+              snapshot.docs.map(PartModel.fromSnapshot).toList(growable: false),
         );
   }
 
