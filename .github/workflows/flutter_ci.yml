@@ -27,10 +27,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Install Flutter
+      - name: Install Flutter (master channel)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          channel: master
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
 
       - name: Flutter pub get
         run: flutter pub get
@@ -50,10 +53,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Install Flutter
+      - name: Install Flutter (master channel)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          channel: master
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
 
       - name: Flutter pub get
         run: flutter pub get
@@ -65,7 +71,7 @@ jobs:
         run: flutter test --coverage
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: coverage/
@@ -86,10 +92,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Install Flutter
+      - name: Install Flutter (master channel)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          channel: master
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
 
       - name: Flutter pub get
         run: flutter pub get
@@ -98,7 +107,7 @@ jobs:
         run: flutter build web --release
 
       - name: Upload web artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: web-release
           path: build/web
@@ -119,10 +128,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Install Flutter
+      - name: Install Flutter (master channel)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          channel: master
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
 
       - name: Flutter pub get
         run: flutter pub get
@@ -131,7 +143,7 @@ jobs:
         run: flutter build apk --release
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -142,13 +154,13 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'published'
     steps:
       - name: Download web artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: web-release
           path: web-release
 
       - name: Download APK artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: android-apk
           path: android-apk

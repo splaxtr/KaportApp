@@ -9,7 +9,7 @@
                 }
             },
             "dart": {
-                "lib/firebase_options.dart": {
+                "lib/core/config/firebase_options.dart": {
                     "projectId": "kaportapp",
                     "configurations": {
                         "android": "1:176601747513:android:808b62ff863b9c15a27de8",
