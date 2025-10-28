@@ -2,19 +2,19 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'firebase_options.dart';
-import 'screens/add_vehicle_screen.dart';
-import 'screens/admin_dashboard_screen.dart';
-import 'screens/assign_employee_screen.dart';
-import 'screens/employee_dashboard_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/owner_dashboard_screen.dart';
-import 'screens/login_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/register_screen.dart';
-import 'screens/shop_users_screen.dart';
-import 'screens/vehicle_list_screen.dart';
-import 'state/user_session.dart';
+import 'package:kaportapp/core/config/firebase_options.dart';
+import 'package:kaportapp/core/state/user_session.dart';
+import 'package:kaportapp/features/auth/presentation/login_screen.dart';
+import 'package:kaportapp/features/auth/presentation/register_screen.dart';
+import 'package:kaportapp/features/dashboard/presentation/admin_dashboard_screen.dart';
+import 'package:kaportapp/features/dashboard/presentation/employee_dashboard_screen.dart';
+import 'package:kaportapp/features/dashboard/presentation/owner_dashboard_screen.dart';
+import 'package:kaportapp/features/home/presentation/home_screen.dart';
+import 'package:kaportapp/features/profile/presentation/profile_screen.dart';
+import 'package:kaportapp/features/shop/presentation/shop_users_screen.dart';
+import 'package:kaportapp/features/vehicle/presentation/add_vehicle_screen.dart';
+import 'package:kaportapp/features/vehicle/presentation/assign_employee_screen.dart';
+import 'package:kaportapp/features/vehicle/presentation/vehicle_list_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,9 +49,8 @@ class KaportApp extends ConsumerWidget {
         },
         error: (error, _) =>
             Scaffold(body: Center(child: Text('Hata: $error'))),
-        loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
+        loading: () =>
+            const Scaffold(body: Center(child: CircularProgressIndicator())),
       ),
       routes: {
         LoginScreen.routeName: (context) => const LoginScreen(),
