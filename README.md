@@ -1,6 +1,5 @@
 # KaportApp
 
-<<<<<<< HEAD
 Kaportaj atölyeleri için araç ve parça yönetim sistemi. Flutter ve Firebase ile geliştirilmiş, gerçek zamanlı veri senkronizasyonu sağlayan bir mobil uygulama.
 
 ## Özellikler
@@ -199,7 +198,6 @@ Dilerseniz Flutter komutlarını doğrudan da çalıştırabilirsiniz.
 
 ### Uygulamayı Çalıştırma
 
->>>>>>> develop
 ```bash
 flutter run
 ```
@@ -344,4 +342,3 @@ araçlarla görüntülenebilir.
 
 Daha hızlı teslim süreleri ve daha az koordinasyon toplantısı isteyen atölye
 ekipleri için ❤️ ile geliştirildi.
->>>>>>> develop
