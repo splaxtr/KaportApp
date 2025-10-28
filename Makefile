@@ -45,6 +45,7 @@ tag-release:
 
 publish-release:
 	@echo "\033[1;32mPublishing GitHub release $(VERSION)...\033[0m"
+	@command -v gh >/dev/null 2>&1 || (echo "❌ GitHub CLI (gh) not found. Install it from https://cli.github.com/" && exit 1)
 	@gh release create $(VERSION) $(DIST_DIR)/app-release.apk $(DIST_DIR)/kaportapp-v$(VERSION).aab $(DIST_DIR)/web.zip -t "KaportApp $(VERSION)"
 
 clean:

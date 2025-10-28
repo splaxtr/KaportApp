@@ -27,10 +27,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Install Flutter
+      - name: Install Flutter (master channel)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          channel: master
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
 
       - name: Flutter pub get
         run: flutter pub get
@@ -50,10 +53,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Install Flutter
+      - name: Install Flutter (master channel)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          channel: master
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
 
       - name: Flutter pub get
         run: flutter pub get
@@ -86,10 +92,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Install Flutter
+      - name: Install Flutter (master channel)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          channel: master
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
 
       - name: Flutter pub get
         run: flutter pub get
@@ -119,10 +128,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      - name: Install Flutter
+      - name: Install Flutter (master channel)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          channel: master
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
 
       - name: Flutter pub get
         run: flutter pub get
