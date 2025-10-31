@@ -15,6 +15,9 @@ test:
 	@echo "\033[1;34mRunning flutter tests...\033[0m"
 	@flutter test --coverage
 
+build: build-web build-apk build-aab
+	@echo "\033[1;32m✅ All builds completed successfully.\033[0m"
+
 build-web:
 	@echo "\033[1;32mBuilding Flutter web release...\033[0m"
 	@flutter build web --release
