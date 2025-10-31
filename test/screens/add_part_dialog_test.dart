@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:kaportapp/models/part_model.dart';
-import 'package:kaportapp/models/user_model.dart';
+import 'package:kaportapp/core/models/part_model.dart';
+import 'package:kaportapp/core/models/part_status_model.dart';
+import 'package:kaportapp/core/models/user_model.dart';
+import 'package:kaportapp/core/services/part_service.dart';
+import 'package:kaportapp/core/state/user_session.dart';
+import 'package:kaportapp/features/part/application/part_providers.dart';
+import 'package:kaportapp/features/part/application/part_status_providers.dart';
 import 'package:kaportapp/screens/add_part_dialog.dart';
-import 'package:kaportapp/services/part_service.dart';
-import 'package:kaportapp/state/part_providers.dart';
-import 'package:kaportapp/state/user_session.dart';
 
 class MockPartService extends Mock implements PartService {}
 
@@ -20,7 +22,7 @@ void main() {
     vehicleId: 'vehicle',
     name: 'fallback-part',
     position: '',
-    status: 'pending',
+    status: PartStatusModel.defaultName,
     quantity: 1,
     shopId: 'shop',
   );
@@ -32,6 +34,19 @@ void main() {
     role: 'owner',
     shopId: 'shop',
   );
+
+  const List<PartStatusModel> testStatuses = [
+    PartStatusModel(
+      id: 'status-default',
+      name: PartStatusModel.defaultName,
+      colorHex: PartStatusModel.defaultColorHex,
+    ),
+    PartStatusModel(
+      id: 'status-ordered',
+      name: 'Sipariş Verildi',
+      colorHex: '#2196F3',
+    ),
+  ];
 
   setUpAll(() {
     registerFallbackValue(fallbackPart);
@@ -54,9 +69,12 @@ void main() {
       ProviderScope(
         overrides: [
           userSessionProvider.overrideWith(
-            (ref) => Stream<UserModel?>.value(testUser),
+            (ref) => UserSessionNotifier.test(testUser),
           ),
           partServiceProvider.overrideWith((ref) => partService),
+          partStatusesProvider(testUser.shopId!).overrideWith(
+            (ref) => Stream<List<PartStatusModel>>.value(testStatuses),
+          ),
         ],
         child: const MaterialApp(
           home: Scaffold(
@@ -193,6 +211,10 @@ void main() {
               ).captured.single
               as List<PartModel>;
       expect(captured, hasLength(3));
+      expect(
+        captured.every((part) => part.status == PartStatusModel.defaultName),
+        isTrue,
+      );
 
       expect(find.text('3 parça eklendi.'), findsOneWidget);
 
@@ -200,6 +222,54 @@ void main() {
       expect(textField.controller?.text ?? '', isEmpty);
       expect(find.byType(CheckboxListTile), findsNothing);
       expect(find.text('Son Eklenenler'), findsOneWidget);
+    });
+
+    testWidgets('changing status updates saved part payload', (tester) async {
+      when(
+        () => partService.addItems(
+          models: any(named: 'models'),
+          actor: any(named: 'actor'),
+        ),
+      ).thenAnswer((_) async {});
+
+      await pumpAddPartDialog(tester);
+
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sipariş Verildi').last);
+      await tester.pumpAndSettle();
+
+      const parts = 'ön tampon\narka tampon';
+      await tester.enterText(partsFieldFinder, parts);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Tümünü Seç'));
+      await tester.pump();
+      final scrollable = find.ancestor(
+        of: saveButtonFinder,
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        saveButtonFinder,
+        200,
+        scrollable: scrollable,
+      );
+      await tester.tap(saveButtonFinder);
+      await tester.pumpAndSettle();
+
+      final captured =
+          verify(
+                () => partService.addItems(
+                  models: captureAny(named: 'models'),
+                  actor: any(named: 'actor'),
+                ),
+              ).captured.single
+              as List<PartModel>;
+
+      expect(
+        captured.every((part) => part.status == 'Sipariş Verildi'),
+        isTrue,
+      );
     });
 
     testWidgets('errors surface via SnackBar and preserve form state', (

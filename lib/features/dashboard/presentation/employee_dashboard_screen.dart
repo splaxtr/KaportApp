@@ -17,124 +17,101 @@ class EmployeeDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userState = ref.watch(userSessionProvider);
+    final user = ref.watch(userSessionProvider);
 
-    return userState.when(
-      data: (user) {
-        if (user == null) {
-          return const LoginScreen();
-        }
+    if (user == null) {
+      return const LoginScreen();
+    }
 
-        if (user.role != 'employee') {
-          return const Scaffold(
-            body: Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.block, size: 64, color: Colors.red),
-                    SizedBox(height: 16),
-                    Text(
-                      'Yetki Yok',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Bu ekrana sadece çalışanlar erişebilir.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+    if (user.role != 'employee') {
+      return const Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.block, size: 64, color: Colors.red),
+                SizedBox(height: 16),
+                Text(
+                  'Yetki Yok',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ),
-          );
-        }
-
-        if (user.shopId == null || user.shopId!.isEmpty) {
-          return const Scaffold(
-            body: Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.store_mall_directory_outlined,
-                      size: 64,
-                      color: Colors.orange,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Dükkan Bulunamadı',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Bir dükkana atanmadınız. Lütfen dükkan sahibi ile iletişime geçin.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                SizedBox(height: 8),
+                Text(
+                  'Bu ekrana sadece çalışanlar erişebilir.',
+                  textAlign: TextAlign.center,
                 ),
-              ),
+              ],
             ),
-          );
-        }
-
-        return Scaffold(
-          appBar: AppBar(
-            title: Text('Hoş geldiniz, ${user.name}'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.person),
-                tooltip: 'Profil',
-                onPressed: () {
-                  Navigator.pushNamed(context, ProfileScreen.routeName);
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.logout),
-                tooltip: 'Çıkış Yap',
-                onPressed: () async {
-                  final auth = ref.read(authServiceProvider);
-                  await auth.signOut();
-                  if (context.mounted) {
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      LoginScreen.routeName,
-                      (route) => false,
-                    );
-                  }
-                },
-              ),
-            ],
           ),
-          body: _VehiclesTab(shopId: user.shopId!),
-        );
-      },
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (error, stack) => Scaffold(
+        ),
+      );
+    }
+
+    PreferredSizeWidget buildAppBar() {
+      return AppBar(
+        title: Text('Hoş geldiniz, ${user.name}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Profil',
+            onPressed: () {
+              Navigator.pushNamed(context, ProfileScreen.routeName);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Çıkış Yap',
+            onPressed: () async {
+              await ref.read(authServiceProvider).signOut();
+              ref.invalidate(userSessionProvider);
+            },
+          ),
+        ],
+      );
+    }
+
+    if (user.shopId == null || user.shopId!.isEmpty) {
+      return Scaffold(
+        appBar: buildAppBar(),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 16),
-                Text('Hata: $error'),
+              children: const [
+                Icon(
+                  Icons.store_mall_directory_outlined,
+                  size: 64,
+                  color: Colors.orange,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Dükkan Bulunamadı',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Bir dükkana atanmadınız. Lütfen dükkan sahibi ile iletişime geçin.',
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           ),
         ),
-      ),
+      );
+    }
+
+    return Scaffold(
+      appBar: buildAppBar(),
+      body: _VehiclesTab(shopId: user.shopId!),
     );
   }
 }

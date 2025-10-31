@@ -1,9 +1,10 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:kaportapp/models/part_model.dart';
-import 'package:kaportapp/models/user_model.dart';
-import 'package:kaportapp/services/part_service.dart';
+import 'package:kaportapp/core/models/part_model.dart';
+import 'package:kaportapp/core/models/part_status_model.dart';
+import 'package:kaportapp/core/models/user_model.dart';
+import 'package:kaportapp/core/services/part_service.dart';
 
 void main() {
   late FakeFirebaseFirestore firestore;
@@ -22,7 +23,7 @@ void main() {
     vehicleId: 'vehicle-1',
     name: 'sağ far',
     position: '',
-    status: 'pending',
+    status: PartStatusModel.defaultName,
     quantity: 1,
     shopId: 'shop-1',
   );

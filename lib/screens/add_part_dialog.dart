@@ -4,11 +4,13 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/part_model.dart';
-import '../models/user_model.dart';
-import '../services/part_service.dart';
-import '../state/part_providers.dart';
-import '../state/user_session.dart';
+import 'package:kaportapp/core/models/part_model.dart';
+import 'package:kaportapp/core/models/part_status_model.dart';
+import 'package:kaportapp/core/models/user_model.dart';
+import 'package:kaportapp/core/services/part_service.dart';
+import 'package:kaportapp/core/state/user_session.dart';
+import 'package:kaportapp/features/part/application/part_providers.dart';
+import 'package:kaportapp/features/part/application/part_status_providers.dart';
 
 final _partsTextControllerProvider =
     Provider.autoDispose<TextEditingController>((ref) {
@@ -38,6 +40,7 @@ class AddPartDialogState {
     required this.isSaving,
     required this.recentlyAdded,
     required this.recentlyAddedAt,
+    this.selectedStatus,
   });
 
   factory AddPartDialogState.initial() => const AddPartDialogState(
@@ -47,7 +50,10 @@ class AddPartDialogState {
     isSaving: false,
     recentlyAdded: <String>[],
     recentlyAddedAt: null,
+    selectedStatus: null,
   );
+
+  static const Object _statusSentinel = Object();
 
   final String rawText;
   final List<String> parsedParts;
@@ -55,6 +61,7 @@ class AddPartDialogState {
   final bool isSaving;
   final List<String> recentlyAdded;
   final DateTime? recentlyAddedAt;
+  final String? selectedStatus;
 
   bool get canSubmit => !isSaving && selectedParts.isNotEmpty;
 
@@ -65,6 +72,7 @@ class AddPartDialogState {
     bool? isSaving,
     List<String>? recentlyAdded,
     DateTime? recentlyAddedAt,
+    Object? selectedStatus = _statusSentinel,
   }) {
     return AddPartDialogState(
       rawText: rawText ?? this.rawText,
@@ -73,6 +81,9 @@ class AddPartDialogState {
       isSaving: isSaving ?? this.isSaving,
       recentlyAdded: recentlyAdded ?? this.recentlyAdded,
       recentlyAddedAt: recentlyAddedAt ?? this.recentlyAddedAt,
+      selectedStatus: identical(selectedStatus, _statusSentinel)
+          ? this.selectedStatus
+          : selectedStatus as String?,
     );
   }
 }
@@ -131,10 +142,32 @@ class AddPartDialogController extends Notifier<AddPartDialogState> {
     state = state.copyWith(selectedParts: <String>{});
   }
 
+  void syncStatuses(List<PartStatusModel> statuses) {
+    if (statuses.isEmpty) {
+      if (state.selectedStatus != null) {
+        state = state.copyWith(selectedStatus: null);
+      }
+      return;
+    }
+
+    final hasValidSelection =
+        state.selectedStatus != null &&
+        statuses.any((status) => status.name == state.selectedStatus);
+
+    if (!hasValidSelection) {
+      state = state.copyWith(selectedStatus: statuses.first.name);
+    }
+  }
+
+  void setSelectedStatus(String? statusName) {
+    state = state.copyWith(selectedStatus: statusName);
+  }
+
   Future<int> submit({
     required UserModel actor,
     required String vehicleId,
     required PartService service,
+    required List<PartStatusModel> statuses,
   }) async {
     if (state.selectedParts.isEmpty || state.isSaving) {
       return 0;
@@ -151,6 +184,12 @@ class AddPartDialogController extends Notifier<AddPartDialogState> {
       return 0;
     }
 
+    final statusForSave =
+        state.selectedStatus ??
+        (statuses.isNotEmpty
+            ? statuses.first.name
+            : PartStatusModel.defaultName);
+
     final timestampBase = DateTime.now().millisecondsSinceEpoch;
     final partsToCreate = <PartModel>[];
     for (var i = 0; i < selectedNames.length; i++) {
@@ -161,7 +200,7 @@ class AddPartDialogController extends Notifier<AddPartDialogState> {
           vehicleId: vehicleId,
           name: name,
           position: '',
-          status: 'pending',
+          status: statusForSave,
           quantity: 1,
           shopId: actor.shopId!,
         ),
@@ -218,7 +257,7 @@ class AddPartDialog extends ConsumerWidget {
     final controller = ref.read(addPartDialogControllerProvider.notifier);
     final textController = ref.watch(_partsTextControllerProvider);
     final service = ref.watch(partServiceProvider);
-    final userAsync = ref.watch(userSessionProvider);
+    final user = ref.watch(userSessionProvider);
 
     ref.listen<AddPartDialogState>(addPartDialogControllerProvider, (
       previous,
@@ -229,23 +268,47 @@ class AddPartDialog extends ConsumerWidget {
       }
     });
 
-    return userAsync.when(
-      data: (user) {
-        if (user == null || user.shopId == null || user.shopId!.isEmpty) {
-          return const AlertDialog(
-            title: Text('Parça Ekle'),
-            content: Text(
-              'Parça eklemek için bir dükkana atanmış olmalısınız.',
-            ),
-          );
-        }
+    if (user == null || user.shopId == null || user.shopId!.isEmpty) {
+      return const AlertDialog(
+        title: Text('Parça Ekle'),
+        content: Text('Parça eklemek için bir dükkana atanmış olmalısınız.'),
+      );
+    }
 
-        final theme = Theme.of(context);
-        final colorScheme = theme.colorScheme;
-        final hasParts = state.parsedParts.isNotEmpty;
-        final allSelected =
-            hasParts && state.selectedParts.length == state.parsedParts.length;
-        final maxDialogHeight = MediaQuery.of(context).size.height * 0.9;
+    final shopId = user.shopId!;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final hasParts = state.parsedParts.isNotEmpty;
+    final allSelected =
+        hasParts && state.selectedParts.length == state.parsedParts.length;
+    final maxDialogHeight = MediaQuery.of(context).size.height * 0.9;
+    final statusesAsync = ref.watch(partStatusesProvider(shopId));
+
+    return statusesAsync.when(
+      loading: () => const AlertDialog(
+        content: SizedBox(
+          height: 80,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (error, _) => AlertDialog(
+        title: const Text('Parça Ekle'),
+        content: Text('Durumlar yüklenemedi: $error'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+      data: (statuses) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) return;
+          controller.syncStatuses(statuses);
+        });
+        final selectedStatus =
+            state.selectedStatus ??
+            (statuses.isNotEmpty ? statuses.first.name : null);
 
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(
@@ -264,6 +327,47 @@ class AddPartDialog extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text('Parçaları Ekleyin', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 16),
+                  if (statuses.isNotEmpty)
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedStatus,
+                      decoration: const InputDecoration(
+                        labelText: 'Varsayılan Durum',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: statuses
+                          .map(
+                            (status) => DropdownMenuItem(
+                              value: status.name,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 14,
+                                    height: 14,
+                                    margin: const EdgeInsets.only(right: 8),
+                                    decoration: BoxDecoration(
+                                      color: status.color,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  Text(status.name),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: controller.setSelectedStatus,
+                    )
+                  else
+                    Card(
+                      color: colorScheme.surfaceContainerHighest,
+                      child: const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text(
+                          'Durum tanımlı değil. Kaydedilen parçalar varsayılan olarak "Beklemede" ile işaretlenecek.',
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   TextField(
                     key: const Key('add-part-multiline-field'),
@@ -342,6 +446,7 @@ class AddPartDialog extends ConsumerWidget {
                                 actor: user,
                                 vehicleId: vehicleId,
                                 service: service,
+                                statuses: statuses,
                               );
 
                               if (!context.mounted || addedCount == 0) {
@@ -434,22 +539,6 @@ class AddPartDialog extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const AlertDialog(
-        content: SizedBox(
-          height: 80,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      ),
-      error: (error, stack) => AlertDialog(
-        title: const Text('Parça Ekle'),
-        content: Text('Kullanıcı bilgisi alınamadı: $error'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Kapat'),
-          ),
-        ],
-      ),
     );
   }
 }

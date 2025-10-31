@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:kaportapp/core/state/user_session.dart';
 import 'package:kaportapp/features/auth/presentation/login_screen.dart';
+import 'package:kaportapp/features/part/presentation/manage_part_statuses_screen.dart';
 import 'package:kaportapp/features/profile/presentation/profile_screen.dart';
 import 'package:kaportapp/features/vehicle/application/vehicle_providers.dart';
 import 'package:kaportapp/features/vehicle/presentation/add_vehicle_screen.dart';
@@ -18,136 +19,127 @@ class OwnerDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userState = ref.watch(userSessionProvider);
+    final user = ref.watch(userSessionProvider);
 
-    return userState.when(
-      data: (user) {
-        if (user == null) {
-          return const LoginScreen();
-        }
+    if (user == null) {
+      return const LoginScreen();
+    }
 
-        if (user.role != 'owner') {
-          return const Scaffold(
-            body: Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.block, size: 64, color: Colors.red),
-                    SizedBox(height: 16),
-                    Text(
-                      'Yetki Yok',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Bu ekrana sadece dükkan sahipleri erişebilir.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+    if (user.role != 'owner') {
+      return const Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.block, size: 64, color: Colors.red),
+                SizedBox(height: 16),
+                Text(
+                  'Yetki Yok',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ),
-          );
-        }
-
-        if (user.shopId == null || user.shopId!.isEmpty) {
-          return const Scaffold(
-            body: Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.store_mall_directory_outlined,
-                      size: 64,
-                      color: Colors.orange,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Dükkan Bulunamadı',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Dükkan bilgisi bulunamadı.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
-
-        return DefaultTabController(
-          length: 2,
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text('Hoş geldiniz, ${user.name}'),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.person),
-                  tooltip: 'Profil',
-                  onPressed: () {
-                    Navigator.pushNamed(context, ProfileScreen.routeName);
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.logout),
-                  tooltip: 'Çıkış Yap',
-                  onPressed: () async {
-                    final auth = ref.read(authServiceProvider);
-                    await auth.signOut();
-                    if (context.mounted) {
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        LoginScreen.routeName,
-                        (route) => false,
-                      );
-                    }
-                  },
+                SizedBox(height: 8),
+                Text(
+                  'Bu ekrana sadece dükkan sahipleri erişebilir.',
+                  textAlign: TextAlign.center,
                 ),
               ],
-              bottom: const TabBar(
+            ),
+          ),
+        ),
+      );
+    }
+
+    PreferredSizeWidget buildAppBar({bool withTabs = false}) {
+      return AppBar(
+        title: Text('Hoş geldiniz, ${user.name}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.fact_check_outlined),
+            tooltip: 'Parça Durumları',
+            onPressed: withTabs
+                ? () {
+                    Navigator.pushNamed(
+                      context,
+                      ManagePartStatusesScreen.routeName,
+                    );
+                  }
+                : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Profil',
+            onPressed: () {
+              Navigator.pushNamed(context, ProfileScreen.routeName);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Çıkış Yap',
+            onPressed: () async {
+              await ref.read(authServiceProvider).signOut();
+              ref.invalidate(userSessionProvider);
+            },
+          ),
+        ],
+        bottom: withTabs
+            ? const TabBar(
                 tabs: [
                   Tab(icon: Icon(Icons.directions_car), text: 'Araçlar'),
                   Tab(icon: Icon(Icons.people), text: 'Çalışanlar'),
                 ],
-              ),
-            ),
-            body: TabBarView(
-              children: [
-                _VehiclesTab(shopId: user.shopId!),
-                _EmployeesTab(shopId: user.shopId!),
-              ],
-            ),
-          ),
-        );
-      },
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (error, stack) => Scaffold(
+              )
+            : null,
+      );
+    }
+
+    if (user.shopId == null || user.shopId!.isEmpty) {
+      return Scaffold(
+        appBar: buildAppBar(withTabs: false),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 16),
-                Text('Hata: $error'),
+              children: const [
+                Icon(
+                  Icons.store_mall_directory_outlined,
+                  size: 64,
+                  color: Colors.orange,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Dükkan Bulunamadı',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Bir dükkana atanmadınız. Yeni bir dükkana atanmak için yöneticinizle iletişime geçin.',
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           ),
+        ),
+      );
+    }
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: buildAppBar(withTabs: true),
+        body: TabBarView(
+          children: [
+            _VehiclesTab(shopId: user.shopId!),
+            _EmployeesTab(shopId: user.shopId!),
+          ],
         ),
       ),
     );
@@ -445,10 +437,7 @@ class _EmployeesTab extends ConsumerWidget {
                                 if (confirmed != true) return;
 
                                 try {
-                                  final userState = ref.read(
-                                    userSessionProvider,
-                                  );
-                                  final user = userState.value;
+                                  final user = ref.read(userSessionProvider);
                                   if (user == null) return;
 
                                   await ref

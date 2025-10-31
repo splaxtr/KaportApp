@@ -20,16 +20,17 @@ class AuthService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   /// Stream of authentication state changes
-  Stream<User?> authChanges() => _auth.authStateChanges();
+  Stream<User?> authStateChanges() => _auth.authStateChanges();
+
+  User? get currentUser => _auth.currentUser;
 
   /// Sign in with email and password
-  Future<User?> signIn(String email, String password) async {
+  Future<UserCredential> signIn(String email, String password) async {
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
+      return await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      return credential.user;
     } on FirebaseAuthException catch (e) {
       debugPrint('AuthService.signIn error: ${e.code} - ${e.message}');
       throw AuthServiceException(_getAuthErrorMessage(e.code));
@@ -46,7 +47,7 @@ class AuthService {
     required String email,
     required String password,
     required String name,
-    String role = 'employee',
+    String? role,
     String? shopId,
   }) async {
     try {
@@ -82,7 +83,7 @@ class AuthService {
   /// Sign out current user
   Future<void> signOut() async {
     try {
-      await _auth.signOut();
+      await FirebaseAuth.instance.signOut();
     } catch (e) {
       debugPrint('AuthService.signOut error: $e');
       throw AuthServiceException('Çıkış yapılırken hata oluştu');

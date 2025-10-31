@@ -91,8 +91,7 @@ class _ShopUsersScreenState extends ConsumerState<ShopUsersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final session = ref.watch(userSessionProvider);
-    final owner = session.value;
+    final owner = ref.watch(userSessionProvider);
     if (owner == null || owner.role != 'owner') {
       return const Scaffold(
         body: Center(
@@ -133,7 +132,7 @@ class _ShopUsersScreenState extends ConsumerState<ShopUsersScreen> {
               return ListTile(
                 leading: const Icon(Icons.person_outline),
                 title: Text(user.email),
-                subtitle: Text('Rol: ${user.role}'),
+                subtitle: Text('Rol: ${user.role ?? 'Belirtilmemiş'}'),
               );
             },
           );
