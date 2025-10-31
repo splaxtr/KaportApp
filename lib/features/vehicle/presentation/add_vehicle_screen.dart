@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:kaportapp/core/models/shop_model.dart';
 import 'package:kaportapp/core/models/vehicle_model.dart';
 import 'package:kaportapp/core/services/vehicle_service.dart';
 import 'package:kaportapp/core/state/user_session.dart';
@@ -25,7 +26,34 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
   final _yearController = TextEditingController();
   final _customerNameController = TextEditingController();
 
+  String? _selectedShopIdForAdmin;
   bool _isSubmitting = false;
+
+  void _syncSelectedShopForAdmin(List<ShopModel> shops) {
+    if (shops.isEmpty) {
+      if (_selectedShopIdForAdmin != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          setState(() {
+            _selectedShopIdForAdmin = null;
+          });
+        });
+      }
+      return;
+    }
+
+    if (_selectedShopIdForAdmin != null &&
+        shops.any((shop) => shop.id == _selectedShopIdForAdmin)) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _selectedShopIdForAdmin = shops.first.id;
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -42,16 +70,35 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
       return;
     }
 
-    final userState = ref.read(userSessionProvider);
-    final user = userState.value;
+    final user = ref.read(userSessionProvider);
 
-    if (user == null || user.shopId == null || user.shopId!.isEmpty) {
+    if (user == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text('Araç eklemek için bir dükkana atanmış olmalısınız'),
+            content: Text('Kullanıcı oturumu bulunamadı'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      return;
+    }
+
+    final isAdmin = user.role == 'admin';
+    final targetShopId = isAdmin ? _selectedShopIdForAdmin : user.shopId;
+
+    if (targetShopId == null || targetShopId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              isAdmin
+                  ? 'Araç eklemek için bir dükkana seçmeniz gerekiyor'
+                  : 'Araç eklemek için bir dükkana atanmış olmalısınız',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -67,7 +114,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
 
       // Create vehicle model with auto-generated ID
       final vehicleId =
-          '${user.shopId}_${DateTime.now().millisecondsSinceEpoch}';
+          '${targetShopId}_${DateTime.now().millisecondsSinceEpoch}';
 
       final vehicle = VehicleModel(
         id: vehicleId,
@@ -76,7 +123,7 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
         model: _modelController.text.trim(),
         year: int.parse(_yearController.text.trim()),
         customerName: _customerNameController.text.trim(),
-        shopId: user.shopId!,
+        shopId: targetShopId,
       );
 
       await service.addItem(vehicle, user);
@@ -125,180 +172,188 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Yeni Araç Ekle')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Plate Number Field
-            TextFormField(
-              controller: _plateController,
-              decoration: const InputDecoration(
-                labelText: 'Plaka *',
-                hintText: '34 ABC 123',
-                prefixIcon: Icon(Icons.numbers),
-                border: OutlineInputBorder(),
-              ),
-              textCapitalization: TextCapitalization.characters,
-              inputFormatters: [LengthLimitingTextInputFormatter(20)],
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Plaka giriniz';
-                }
-                return null;
-              },
-            ),
+    final user = ref.watch(userSessionProvider);
 
-            const SizedBox(height: 16),
+    if (user == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-            // Brand Field
-            TextFormField(
-              controller: _brandController,
-              decoration: const InputDecoration(
-                labelText: 'Marka *',
-                hintText: 'Toyota, Mercedes, Ford, vb.',
-                prefixIcon: Icon(Icons.branding_watermark),
-                border: OutlineInputBorder(),
-              ),
-              textCapitalization: TextCapitalization.words,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Marka giriniz';
-                }
-                return null;
-              },
-            ),
+    final isAdmin = user.role == 'admin';
+    final shopsAsync = isAdmin
+        ? ref.watch(shopsStreamProvider)
+        : const AsyncValue<List<ShopModel>>.data(<ShopModel>[]);
 
-            const SizedBox(height: 16),
+    return shopsAsync.when(
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, _) => Scaffold(
+        appBar: AppBar(title: const Text('Yeni Araç Ekle')),
+        body: Center(child: Text('Mağazalar yüklenemedi: $error')),
+      ),
+      data: (shops) {
+        if (isAdmin) {
+          _syncSelectedShopForAdmin(shops);
 
-            // Model Field
-            TextFormField(
-              controller: _modelController,
-              decoration: const InputDecoration(
-                labelText: 'Model *',
-                hintText: 'Corolla, C200, Focus, vb.',
-                prefixIcon: Icon(Icons.local_car_wash),
-                border: OutlineInputBorder(),
-              ),
-              textCapitalization: TextCapitalization.words,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Model giriniz';
-                }
-                return null;
-              },
-            ),
-
-            const SizedBox(height: 16),
-
-            // Year Field
-            TextFormField(
-              controller: _yearController,
-              decoration: const InputDecoration(
-                labelText: 'Model Yılı *',
-                hintText: '2023',
-                prefixIcon: Icon(Icons.calendar_today),
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(4),
-              ],
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Model yılı giriniz';
-                }
-
-                final year = int.tryParse(value.trim());
-                if (year == null) {
-                  return 'Geçerli bir yıl giriniz';
-                }
-
-                final currentYear = DateTime.now().year;
-                if (year < 1900 || year > currentYear + 1) {
-                  return 'Yıl 1900-${currentYear + 1} arasında olmalıdır';
-                }
-
-                return null;
-              },
-            ),
-
-            const SizedBox(height: 16),
-
-            // Customer Name Field
-            TextFormField(
-              controller: _customerNameController,
-              decoration: const InputDecoration(
-                labelText: 'Müşteri Adı *',
-                hintText: 'Ahmet Yılmaz',
-                prefixIcon: Icon(Icons.person),
-                border: OutlineInputBorder(),
-              ),
-              textCapitalization: TextCapitalization.words,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Müşteri adı giriniz';
-                }
-                return null;
-              },
-            ),
-
-            const SizedBox(height: 32),
-
-            // Submit Button
-            FilledButton.icon(
-              onPressed: _isSubmitting ? null : _submitForm,
-              icon: _isSubmitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.check),
-              label: Text(_isSubmitting ? 'Kaydediliyor...' : 'Aracı Kaydet'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Info Card
-            Card(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        '* ile işaretli alanlar zorunludur',
-                        style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
+          if (shops.isEmpty) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Yeni Araç Ekle')),
+              body: const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'Henüz kayıtlı bir dükkan bulunmuyor. Araç eklemek için önce bir dükkan oluşturmalısınız.',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
+            );
+          }
+        }
+
+        return Scaffold(
+          appBar: AppBar(title: const Text('Yeni Araç Ekle')),
+          body: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (isAdmin) ...[
+                  DropdownButtonFormField<String>(
+                    // ignore: deprecated_member_use
+                    value: _selectedShopIdForAdmin,
+                    decoration: const InputDecoration(
+                      labelText: 'Dükkan *',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.storefront),
+                    ),
+                    items: shops
+                        .map(
+                          (shop) => DropdownMenuItem(
+                            value: shop.id,
+                            child: Text(shop.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedShopIdForAdmin = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                TextFormField(
+                  controller: _plateController,
+                  decoration: const InputDecoration(
+                    labelText: 'Plaka *',
+                    hintText: '34 ABC 123',
+                    prefixIcon: Icon(Icons.numbers),
+                    border: OutlineInputBorder(),
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: [LengthLimitingTextInputFormatter(20)],
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Plaka giriniz';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _brandController,
+                  decoration: const InputDecoration(
+                    labelText: 'Marka *',
+                    hintText: 'Toyota, Mercedes, Ford, vb.',
+                    prefixIcon: Icon(Icons.branding_watermark),
+                    border: OutlineInputBorder(),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Marka giriniz';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _modelController,
+                  decoration: const InputDecoration(
+                    labelText: 'Model *',
+                    hintText: 'Corolla, C200, Focus, vb.',
+                    prefixIcon: Icon(Icons.local_car_wash),
+                    border: OutlineInputBorder(),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Model giriniz';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _yearController,
+                  decoration: const InputDecoration(
+                    labelText: 'Model Yılı *',
+                    hintText: '2023',
+                    prefixIcon: Icon(Icons.calendar_today),
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Model yılı giriniz';
+                    }
+                    final year = int.tryParse(value.trim());
+                    if (year == null || year < 1900 || year > 2100) {
+                      return 'Geçerli bir yıl giriniz';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _customerNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Müşteri Adı',
+                    hintText: 'İsteğe bağlı',
+                    prefixIcon: Icon(Icons.person_outline),
+                    border: OutlineInputBorder(),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                ),
+
+                const SizedBox(height: 24),
+
+                FilledButton.icon(
+                  onPressed: _isSubmitting ? null : _submitForm,
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: Text(_isSubmitting ? 'Kaydediliyor...' : 'Kaydet'),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

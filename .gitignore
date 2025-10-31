@@ -34,6 +34,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+/dist/
 
 # Symbolication related
 app.*.symbols
@@ -45,6 +46,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+<<<<<<< HEAD
 /dist/
 
 # Generated plugin metadata
@@ -53,3 +55,15 @@ app.*.map.json
 
 # Environment files (secrets)
 .env
+=======
+
+# Generated plugin lists
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Credentials / environment configuration
+.env
+*.keystore
+*.jks
+keystore.jks
+>>>>>>> b6b5cdcae38d0ca6913587a6f783af3f2053efcd

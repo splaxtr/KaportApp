@@ -9,9 +9,10 @@ final partServiceProvider = Provider<PartService>((ref) {
 });
 
 /// Provider for parts stream filtered by shopId
-/// Usage: ref.watch(partsStreamProvider(shopId))
+/// Kullanıcı admin ise `shopId` yerine null verilebilir
+/// Usage: `ref.watch(partsStreamProvider(shopIdOrNull))`
 final partsStreamProvider = StreamProvider.autoDispose
-    .family<List<PartModel>, String>((ref, shopId) {
+    .family<List<PartModel>, String?>((ref, shopId) {
       final service = ref.watch(partServiceProvider);
       return service.getItemsByShop(shopId);
     });

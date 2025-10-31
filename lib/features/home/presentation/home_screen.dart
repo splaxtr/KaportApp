@@ -16,81 +16,67 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authServiceProvider);
-    final userState = ref.watch(userSessionProvider);
+    final user = ref.watch(userSessionProvider);
 
-    return userState.when(
-      data: (user) {
-        if (user == null) {
-          return const LoginScreen();
-        }
+    if (user == null) {
+      return const LoginScreen();
+    }
 
-        final isAdmin = user.role == 'admin';
-        final isOwner = user.role == 'owner';
+    final isAdmin = user.role == 'admin';
+    final isOwner = user.role == 'owner';
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(
-              'Hoş geldiniz, ${user.name.isEmpty ? user.email : user.name}',
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Hoş geldiniz, ${user.name.isEmpty ? user.email : user.name}',
+        ),
+        actions: [
+          IconButton(
+            onPressed: () async {
+              await auth.signOut();
+              ref.invalidate(userSessionProvider);
+            },
+            icon: const Icon(Icons.logout),
+            tooltip: 'Çıkış Yap',
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _InfoTile(user: user),
+          const SizedBox(height: 24),
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: const Text('Profil'),
+            subtitle: const Text('İsim ve şifre değiştir'),
+            onTap: () {
+              Navigator.pushNamed(context, ProfileScreen.routeName);
+            },
+          ),
+          if (isAdmin)
+            ListTile(
+              leading: const Icon(Icons.store_mall_directory),
+              title: const Text('Yönetici Paneli'),
+              subtitle: const Text('Dükkan oluşturma ve yönetim'),
+              onTap: () {
+                Navigator.pushNamed(
+                  context,
+                  AdminDashboardScreen.routeName,
+                );
+              },
             ),
-            actions: [
-              IconButton(
-                onPressed: () async {
-                  await auth.signOut();
-
-                  if (context.mounted) {
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      LoginScreen.routeName,
-                      (route) => false,
-                    );
-                  }
-                },
-                icon: const Icon(Icons.logout),
-                tooltip: 'Çıkış Yap',
-              ),
-            ],
-          ),
-          body: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _InfoTile(user: user),
-              const SizedBox(height: 24),
-              ListTile(
-                leading: const Icon(Icons.person),
-                title: const Text('Profil'),
-                subtitle: const Text('İsim ve şifre değiştir'),
-                onTap: () {
-                  Navigator.pushNamed(context, ProfileScreen.routeName);
-                },
-              ),
-              if (isAdmin)
-                ListTile(
-                  leading: const Icon(Icons.store_mall_directory),
-                  title: const Text('Yönetici Paneli'),
-                  subtitle: const Text('Dükkan oluşturma ve yönetim'),
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AdminDashboardScreen.routeName,
-                    );
-                  },
-                ),
-              if (isOwner && user.shopId != null && user.shopId!.isNotEmpty)
-                ListTile(
-                  leading: const Icon(Icons.group),
-                  title: const Text('Dükkan Kullanıcıları'),
-                  subtitle: const Text('Çalışan davet et ve yönet'),
-                  onTap: () {
-                    Navigator.pushNamed(context, ShopUsersScreen.routeName);
-                  },
-                ),
-            ],
-          ),
-        );
-      },
-      error: (error, _) => Scaffold(body: Center(child: Text('Hata: $error'))),
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+          if (isOwner && user.shopId != null && user.shopId!.isNotEmpty)
+            ListTile(
+              leading: const Icon(Icons.group),
+              title: const Text('Dükkan Kullanıcıları'),
+              subtitle: const Text('Çalışan davet et ve yönet'),
+              onTap: () {
+                Navigator.pushNamed(context, ShopUsersScreen.routeName);
+              },
+            ),
+        ],
+      ),
     );
   }
 }
@@ -109,7 +95,7 @@ class _InfoTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('E-posta: ${user.email}'),
-            Text('Rol: ${user.role}'),
+            Text('Rol: ${user.role ?? 'Belirtilmemiş'}'),
             Text('Dükkan ID: ${user.shopId ?? '-'}'),
           ],
         ),

@@ -22,42 +22,38 @@ service cloud.firestore {
 
     // --- USERS ---
     match /users/{userId} {
-      // Kullanıcı kendi verisini okuyabilir
-      // VEYA admin tüm kullanıcıları okuyabilir
-      // VEYA owner tüm kullanıcıları okuyabilir (çalışan atamak için)
-      // VEYA aynı shop'taki kullanıcıları okuyabilir
       allow read: if request.auth != null && (
         request.auth.uid == userId ||
         isAdmin() ||
-        getUserData().role == "owner" ||
-        resource.data.shopId == getUserData().shopId
+        (
+          getUserData().role == "owner" &&
+          (
+            (resource.data.shopId != null &&
+              resource.data.shopId == getUserData().shopId) ||
+            resource.data.shopId == null ||
+            resource.data.shopId == ""
+          )
+        )
       );
 
-      // Yeni kayıt: Kullanıcı kendi kaydını employee olarak oluşturabilir
-      allow create: if request.auth != null &&
-        request.auth.uid == userId &&
-        request.resource.data.role == "employee" &&
-        request.resource.data.email == request.auth.token.email;
+      allow create: if request.auth != null && request.auth.uid == userId;
 
-      // Kendi adını güncelleyebilir (PASSWORD FIELD KALDIRILDI!)
-      allow update: if request.auth != null &&
-        request.auth.uid == userId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name"]);
+      allow update: if request.auth != null && (
+        request.auth.uid == userId ||
+        isAdmin() ||
+        (
+          getUserData().role == "owner" &&
+          (
+            request.resource.data.shopId == getUserData().shopId ||
+            (
+              resource.data.shopId == getUserData().shopId &&
+              request.resource.data.shopId == null
+            )
+          )
+        )
+      );
 
-      // Admin tüm kullanıcıları yönetebilir
-      allow create, update, delete: if isAdmin();
-
-      // Owner kendi dükkanındaki kullanıcıları yönetebilir
-      allow update, delete: if request.auth != null &&
-        resource.data.shopId != null &&
-        get(/databases/$(database)/documents/shops/$(resource.data.shopId)).data.ownerId == request.auth.uid;
-
-      // Owner atanmamış kullanıcıları kendi dükkanına atayabilir (shopId ve role güncellemesi)
-      allow update: if request.auth != null &&
-        getUserData().role == "owner" &&
-        (resource.data.shopId == null || resource.data.shopId == "") &&
-        request.resource.data.shopId == getUserData().shopId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["shopId", "role"]);
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // --- SHOPS ---
@@ -80,6 +76,27 @@ service cloud.firestore {
           request.auth.uid == resource.data.ownerId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(["users"])
         );
+
+      // --- SHOP STATUSES ---
+      match /statuses/{statusId} {
+        // Aynı dükkandaki owner veya employee durumları görüntüleyebilir
+        allow read: if request.auth != null && (
+          isAdmin() ||
+          (
+            isSameShop(shopId) &&
+            getUserData().role in ["owner", "employee"]
+          )
+        );
+
+        // Yalnızca aynı dükkandaki owner yeni durum ekleyebilir / düzenleyebilir / silebilir
+        allow create, update, delete: if request.auth != null && (
+          isAdmin() ||
+          (
+            isSameShop(shopId) &&
+            getUserData().role == "owner"
+          )
+        );
+      }
     }
 
     // --- VEHICLES ---
