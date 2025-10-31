@@ -53,7 +53,6 @@ app.*.map.json
 
 # Credentials / environment configuration
 .env
-.env.*
 *.keystore
 *.jks
 keystore.jks
