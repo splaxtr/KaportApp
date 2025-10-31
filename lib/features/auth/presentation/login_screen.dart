@@ -40,7 +40,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      await auth.signIn(_emailController.text.trim(), _passwordController.text);
+      await auth.signIn(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+      ref.invalidate(userSessionProvider);
     } catch (error) {
       messenger
         ..hideCurrentSnackBar()

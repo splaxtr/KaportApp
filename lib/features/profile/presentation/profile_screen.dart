@@ -154,12 +154,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userState = ref.watch(userSessionProvider);
+    final user = ref.watch(userSessionProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profil')),
-      body: userState.when(
-        data: (user) {
+      body: Builder(
+        builder: (context) {
           if (user == null) {
             return const Center(child: Text('Kullanıcı oturumu bulunamadı'));
           }
@@ -440,17 +440,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('Kullanıcı bilgisi alınamadı: $error'),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -484,7 +473,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  String _getRoleLabel(String role) {
+  String _getRoleLabel(String? role) {
+    if (role == null || role.isEmpty) {
+      return 'Belirtilmemiş';
+    }
     switch (role) {
       case 'admin':
         return 'Yönetici';

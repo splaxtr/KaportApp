@@ -29,12 +29,14 @@ class PartService {
   /// Add a new part to the collection
   Future<void> addItem(PartModel model, UserModel actor) async {
     // Validate actor has permission
-    if (actor.role != 'owner' && actor.role != 'employee') {
+    if (actor.role != 'owner' &&
+        actor.role != 'employee' &&
+        actor.role != 'admin') {
       throw PartServiceException('Yetkisiz işlem');
     }
 
     // Validate shopId matches actor's shop
-    if (model.shopId != actor.shopId) {
+    if (actor.role != 'admin' && model.shopId != actor.shopId) {
       throw PartServiceException('Parça sadece kendi dükkanınıza eklenebilir');
     }
 
@@ -54,7 +56,9 @@ class PartService {
     required List<PartModel> models,
     required UserModel actor,
   }) async {
-    if (actor.role != 'owner' && actor.role != 'employee') {
+    if (actor.role != 'owner' &&
+        actor.role != 'employee' &&
+        actor.role != 'admin') {
       throw PartServiceException('Yetkisiz işlem');
     }
 
@@ -62,11 +66,13 @@ class PartService {
       return;
     }
 
-    for (final model in models) {
-      if (model.shopId != actor.shopId) {
-        throw PartServiceException(
-          'Parçalar sadece kendi dükkanınıza eklenebilir',
-        );
+    if (actor.role != 'admin') {
+      for (final model in models) {
+        if (model.shopId != actor.shopId) {
+          throw PartServiceException(
+            'Parçalar sadece kendi dükkanınıza eklenebilir',
+          );
+        }
       }
     }
 
@@ -86,6 +92,34 @@ class PartService {
     }
   }
 
+  Future<void> updateStatusForShop({
+    required String shopId,
+    required String fromStatus,
+    required String fallbackStatus,
+  }) async {
+    try {
+      final querySnapshot = await _partsCollection
+          .where('shopId', isEqualTo: shopId)
+          .where('status', isEqualTo: fromStatus)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        return;
+      }
+
+      final batch = _firestore.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.update(doc.reference, {'status': fallbackStatus});
+      }
+      await batch.commit();
+    } on FirebaseException catch (exception) {
+      debugPrint('PartService.updateStatusForShop error: $exception');
+      throw PartServiceException(
+        'Parça durumları güncellenemedi: ${exception.message ?? exception.code}',
+      );
+    }
+  }
+
   /// Update an existing part with actor validation
   Future<void> updatePart({
     required UserModel actor,
@@ -93,7 +127,9 @@ class PartService {
     required Map<String, dynamic> updates,
   }) async {
     // Validate actor has permission
-    if (actor.role != 'owner' && actor.role != 'employee') {
+    if (actor.role != 'owner' &&
+        actor.role != 'employee' &&
+        actor.role != 'admin') {
       throw PartServiceException('Yetkisiz işlem');
     }
 
@@ -112,7 +148,7 @@ class PartService {
       final partShopId = partData['shopId'] as String?;
 
       // Validate shopId matches actor's shop
-      if (partShopId != actor.shopId) {
+      if (actor.role != 'admin' && partShopId != actor.shopId) {
         throw PartServiceException('Bu parçayı düzenleme yetkiniz yok');
       }
 
@@ -135,7 +171,9 @@ class PartService {
     required String partId,
   }) async {
     // Validate actor has permission
-    if (actor.role != 'owner' && actor.role != 'employee') {
+    if (actor.role != 'owner' &&
+        actor.role != 'employee' &&
+        actor.role != 'admin') {
       throw PartServiceException('Yetkisiz işlem');
     }
 
@@ -154,7 +192,7 @@ class PartService {
       final partShopId = partData['shopId'] as String?;
 
       // Validate shopId matches actor's shop
-      if (partShopId != actor.shopId) {
+      if (actor.role != 'admin' && partShopId != actor.shopId) {
         throw PartServiceException('Bu parçayı silme yetkiniz yok');
       }
 
@@ -198,14 +236,17 @@ class PartService {
   }
 
   /// Get parts stream filtered by shop ID
-  Stream<List<PartModel>> getItemsByShop(String shopId) {
-    return _partsCollection
-        .where('shopId', isEqualTo: shopId)
-        .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(PartModel.fromSnapshot).toList(growable: false),
-        );
+  Stream<List<PartModel>> getItemsByShop(String? shopId) {
+    Query<Map<String, dynamic>> query = _partsCollection;
+
+    if (shopId != null && shopId.isNotEmpty) {
+      query = query.where('shopId', isEqualTo: shopId);
+    }
+
+    return query.snapshots().map(
+      (snapshot) =>
+          snapshot.docs.map(PartModel.fromSnapshot).toList(growable: false),
+    );
   }
 
   /// Get parts stream filtered by vehicle ID and shop ID

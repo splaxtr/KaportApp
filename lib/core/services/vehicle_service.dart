@@ -19,12 +19,14 @@ class VehicleService {
 
   Future<void> addItem(VehicleModel model, UserModel actor) async {
     // Validate actor has permission
-    if (actor.role != 'owner' && actor.role != 'employee') {
+    if (actor.role != 'owner' &&
+        actor.role != 'employee' &&
+        actor.role != 'admin') {
       throw VehicleServiceException('Yetkisiz işlem');
     }
 
     // Validate shopId matches actor's shop
-    if (model.shopId != actor.shopId) {
+    if (actor.role != 'admin' && model.shopId != actor.shopId) {
       throw VehicleServiceException(
         'Araç sadece kendi dükkanınıza eklenebilir',
       );
@@ -78,15 +80,17 @@ class VehicleService {
     }
   }
 
-  Stream<List<VehicleModel>> getItemsByShop(String shopId) {
-    return _vehiclesCollection
-        .where('shopId', isEqualTo: shopId)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map(VehicleModel.fromSnapshot)
-              .toList(growable: false),
-        );
+  Stream<List<VehicleModel>> getItemsByShop(String? shopId) {
+    Query<Map<String, dynamic>> query = _vehiclesCollection;
+
+    if (shopId != null && shopId.isNotEmpty) {
+      query = query.where('shopId', isEqualTo: shopId);
+    }
+
+    return query.snapshots().map(
+      (snapshot) =>
+          snapshot.docs.map(VehicleModel.fromSnapshot).toList(growable: false),
+    );
   }
 
   Future<VehicleModel?> getItemById(String id) async {

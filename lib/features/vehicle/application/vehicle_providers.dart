@@ -9,9 +9,10 @@ final vehicleServiceProvider = Provider<VehicleService>((ref) {
 });
 
 /// Provider for vehicles stream filtered by shopId
-/// Usage: `ref.watch(vehiclesStreamProvider(shopId))`
+/// Pass `null` to get tüm araçlar (admin senaryosu)
+/// Usage: `ref.watch(vehiclesStreamProvider(shopIdOrNull))`
 final vehiclesStreamProvider = StreamProvider.autoDispose
-    .family<List<VehicleModel>, String>((ref, shopId) {
+    .family<List<VehicleModel>, String?>((ref, shopId) {
       final service = ref.watch(vehicleServiceProvider);
       return service.getItemsByShop(shopId);
     });

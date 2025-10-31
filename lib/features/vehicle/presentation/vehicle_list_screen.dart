@@ -16,112 +16,103 @@ class VehicleListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userState = ref.watch(userSessionProvider);
+    final user = ref.watch(userSessionProvider);
 
-    return userState.when(
-      data: (user) {
-        if (user == null || user.shopId == null || user.shopId!.isEmpty) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Araç Listesi')),
-            body: const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Bu ekrana erişmek için bir dükkana atanmış olmalısınız.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          );
-        }
+    if (user == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-        final vehiclesAsync = ref.watch(vehiclesStreamProvider(user.shopId!));
+    final isAdmin = user.role == 'admin';
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Araç Listesi'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.add),
-                tooltip: 'Yeni Araç Ekle',
-                onPressed: () {
-                  Navigator.pushNamed(context, AddVehicleScreen.routeName);
-                },
-              ),
-            ],
-          ),
-          body: vehiclesAsync.when(
-            data: (vehicles) {
-              if (vehicles.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.directions_car,
-                        size: 64,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Henüz araç eklenmemiş',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 24),
-                      FilledButton.icon(
-                        onPressed: () {
-                          Navigator.pushNamed(
-                            context,
-                            AddVehicleScreen.routeName,
-                          );
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('İlk Aracı Ekle'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: vehicles.length,
-                itemBuilder: (context, index) {
-                  final vehicle = vehicles[index];
-                  return _VehicleCard(vehicle: vehicle, user: user);
-                },
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Araçlar yüklenirken hata oluştu:\n$error',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (error, stack) => Scaffold(
+    if (!isAdmin && (user.shopId == null || user.shopId!.isEmpty)) {
+      return Scaffold(
         appBar: AppBar(title: const Text('Araç Listesi')),
-        body: Center(child: Text('Kullanıcı bilgisi alınamadı: $error')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Bu ekrana erişmek için bir dükkana atanmış olmalısınız.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final vehiclesAsync = ref.watch(
+      vehiclesStreamProvider(isAdmin ? null : user.shopId),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Araç Listesi'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Yeni Araç Ekle',
+            onPressed: () {
+              Navigator.pushNamed(context, AddVehicleScreen.routeName);
+            },
+          ),
+        ],
+      ),
+      body: vehiclesAsync.when(
+        data: (vehicles) {
+          if (vehicles.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.directions_car,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Henüz araç eklenmemiş',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamed(context, AddVehicleScreen.routeName);
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('İlk Aracı Ekle'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: vehicles.length,
+            itemBuilder: (context, index) {
+              final vehicle = vehicles[index];
+              return _VehicleCard(vehicle: vehicle, user: user);
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  'Araçlar yüklenirken hata oluştu:\n$error',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

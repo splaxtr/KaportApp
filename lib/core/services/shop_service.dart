@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 
 import 'package:kaportapp/core/models/shop_model.dart';
 import 'package:kaportapp/core/models/user_model.dart';
+import 'package:kaportapp/core/models/vehicle_model.dart';
+import 'package:kaportapp/core/services/part_status_service.dart';
 import 'package:kaportapp/core/utils/acl.dart';
 
 /// Custom exception for ShopService errors
@@ -18,9 +20,61 @@ class ShopServiceException implements Exception {
 /// Service for managing shops and their employees
 class ShopService {
   ShopService({FirebaseFirestore? firestore})
-    : _db = firestore ?? FirebaseFirestore.instance;
+    : _db = firestore ?? FirebaseFirestore.instance,
+      _partStatusService = PartStatusService(firestore: firestore);
 
   final FirebaseFirestore _db;
+  final PartStatusService _partStatusService;
+
+  Stream<ShopModel?> watchShop(String shopId) {
+    return _db
+        .collection('shops')
+        .doc(shopId)
+        .snapshots()
+        .map((snapshot) => snapshot.exists ? ShopModel.fromDoc(snapshot) : null);
+  }
+
+  Stream<List<UserModel>> watchShopEmployees(String shopId) {
+    return _db
+        .collection('users')
+        .where('shopId', isEqualTo: shopId)
+        .where('role', isEqualTo: 'employee')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => UserModel.fromDoc(doc.id, doc.data()))
+              .toList(growable: false),
+        );
+  }
+
+  Stream<List<UserModel>> watchAssignableEmployees() {
+    return _db
+        .collection('users')
+        .where('shopId', isNull: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => UserModel.fromDoc(doc.id, doc.data()))
+              .where(
+                (user) => user.role == null ||
+                    user.role!.isEmpty ||
+                    user.role == 'employee',
+              )
+              .toList(growable: false),
+        );
+  }
+
+  Stream<List<VehicleModel>> watchShopVehicles(String shopId) {
+    return _db
+        .collection('vehicles')
+        .where('shopId', isEqualTo: shopId)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map(VehicleModel.fromSnapshot)
+              .toList(growable: false),
+        );
+  }
 
   Stream<List<ShopModel>> watchShops() {
     return _db
@@ -102,6 +156,7 @@ class ShopService {
       });
 
       await batch.commit();
+      await _partStatusService.seedDefaultStatuses(shopRef.id);
       return shopRef.id;
     } on FirebaseException catch (error) {
       debugPrint('createShop error: $error');
@@ -289,5 +344,72 @@ class ShopService {
               })
               .toList(growable: false),
         );
+  }
+
+  Future<void> deleteShop({
+    required UserModel actor,
+    required String shopId,
+  }) async {
+    if (!Acl.canAdminShops(actor)) {
+      throw ShopServiceException('Yalnızca yöneticiler mağaza silebilir');
+    }
+
+    final shopRef = _db.collection('shops').doc(shopId);
+
+    try {
+      final snapshot = await shopRef.get();
+      if (!snapshot.exists) {
+        throw ShopServiceException('Dükkan bulunamadı');
+      }
+
+      final data = snapshot.data() ?? <String, dynamic>{};
+      final users = ((data['users'] as List?) ?? const <dynamic>[])
+          .map((e) => e.toString())
+          .toList(growable: false);
+      final ownerId = data['ownerId'] as String?;
+
+      final batch = _db.batch();
+
+      for (final userId in users) {
+        final userRef = _db.collection('users').doc(userId);
+        final update = <String, dynamic>{'shopId': null};
+        if (userId != ownerId) {
+          update['role'] = 'employee';
+        }
+        batch.update(userRef, update);
+      }
+
+      // Delete vehicles associated with the shop
+      final vehiclesSnapshot = await _db
+          .collection('vehicles')
+          .where('shopId', isEqualTo: shopId)
+          .get();
+      for (final doc in vehiclesSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // Delete parts associated with the shop
+      final partsSnapshot = await _db
+          .collection('parts')
+          .where('shopId', isEqualTo: shopId)
+          .get();
+      for (final doc in partsSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      batch.delete(shopRef);
+
+      await _partStatusService.deleteAllStatuses(shopId);
+
+      await batch.commit();
+    } on ShopServiceException {
+      rethrow;
+    } on FirebaseException catch (error) {
+      debugPrint('deleteShop error: ${error.message ?? error.code}');
+      throw ShopServiceException('Dükkan silinemedi: ${error.message ?? error.code}');
+    } catch (error) {
+      debugPrint('deleteShop unexpected error: $error');
+      throw ShopServiceException('Dükkan silinirken beklenmeyen hata oluştu');
+    }
   }
 }

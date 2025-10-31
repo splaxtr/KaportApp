@@ -17,7 +17,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  String _selectedRole = 'employee';
+  String? _selectedRole;
   bool _isSubmitting = false;
 
   @override
@@ -109,25 +109,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<String?>(
                   initialValue: _selectedRole,
-                  decoration: const InputDecoration(labelText: 'Rol'),
+                  decoration: const InputDecoration(
+                    labelText: 'Rol (İsteğe Bağlı)',
+                  ),
                   items: const [
-                    DropdownMenuItem(value: 'employee', child: Text('Çalışan')),
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Belirtilmemiş'),
+                    ),
                     DropdownMenuItem(
                       value: 'owner',
                       child: Text('Dükkan Sahibi'),
                     ),
-                    DropdownMenuItem(value: 'admin', child: Text('Yönetici')),
+                    DropdownMenuItem(value: 'employee', child: Text('Çalışan')),
                   ],
                   onChanged: _isSubmitting
                       ? null
                       : (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedRole = value;
-                            });
-                          }
+                          setState(() {
+                            _selectedRole = value;
+                          });
                         },
                 ),
                 const SizedBox(height: 24),

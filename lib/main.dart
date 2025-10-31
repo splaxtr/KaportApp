@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:kaportapp/core/config/firebase_options.dart';
@@ -10,6 +11,7 @@ import 'package:kaportapp/features/dashboard/presentation/admin_dashboard_screen
 import 'package:kaportapp/features/dashboard/presentation/employee_dashboard_screen.dart';
 import 'package:kaportapp/features/dashboard/presentation/owner_dashboard_screen.dart';
 import 'package:kaportapp/features/home/presentation/home_screen.dart';
+import 'package:kaportapp/features/part/presentation/manage_part_statuses_screen.dart';
 import 'package:kaportapp/features/profile/presentation/profile_screen.dart';
 import 'package:kaportapp/features/shop/presentation/shop_users_screen.dart';
 import 'package:kaportapp/features/vehicle/presentation/add_vehicle_screen.dart';
@@ -18,6 +20,7 @@ import 'package:kaportapp/features/vehicle/presentation/vehicle_list_screen.dart
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const ProviderScope(child: KaportApp()));
 }
@@ -27,15 +30,22 @@ class KaportApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(userSessionProvider);
+    final user = ref.watch(userSessionProvider);
+    final auth = ref.watch(authServiceProvider);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: session.when(
-        data: (user) {
+      home: Builder(
+        builder: (context) {
           if (user == null) {
+            if (auth.currentUser != null) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
             return const LoginScreen();
           }
+
           if (user.role == 'admin') {
             return const AdminDashboardScreen();
           }
@@ -47,10 +57,6 @@ class KaportApp extends ConsumerWidget {
           }
           return const HomeScreen();
         },
-        error: (error, _) =>
-            Scaffold(body: Center(child: Text('Hata: $error'))),
-        loading: () =>
-            const Scaffold(body: Center(child: CircularProgressIndicator())),
       ),
       routes: {
         LoginScreen.routeName: (context) => const LoginScreen(),
@@ -68,6 +74,8 @@ class KaportApp extends ConsumerWidget {
         ProfileScreen.routeName: (context) => const ProfileScreen(),
         AssignEmployeeScreen.routeName: (context) =>
             const AssignEmployeeScreen(),
+        ManagePartStatusesScreen.routeName: (context) =>
+            const ManagePartStatusesScreen(),
       },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
