@@ -57,22 +57,21 @@ jobs:
         if: startsWith(github.ref, 'refs/heads/')
         run: |
           python3 <<'PY'
-import os, re
-from pathlib import Path
-pubspec = Path("pubspec.yaml")
-data = pubspec.read_text()
-m = re.search(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)", data, re.MULTILINE)
-if not m:
-    raise SystemExit("Version field not found in pubspec.yaml")
-semver, build = m.groups()
-new_build = int(build) + 1
-new_version = f"{semver}+{new_build}"
-updated = re.sub(r"^version:\s*.*$", f"version: {new_version}", data, count=1, flags=re.MULTILINE)
-pubspec.write_text(updated)
-with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
-    f.write(f"new_version={new_version}\n")
-print(f"Bumped version to {new_version}")
-PY
+          import os, re
+          from pathlib import Path
+          pubspec = Path("pubspec.yaml")
+          data = pubspec.read_text()
+          m = re.search(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)", data, re.MULTILINE)
+          if not m:
+              raise SystemExit("Version field not found in pubspec.yaml")
+          semver, build = m.groups()
+          new_build = int(build) + 1
+          new_version = f"{semver}+{new_build}"
+          updated = re.sub(r"^version:\s*.*$", f"version: {new_version}", data, count=1, flags=re.MULTILINE)
+          pubspec.write_text(updated)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"new_version={new_version}\n")
+          print(f"Bumped version to {new_version}")
 
       - name: Build iOS IPA (release, no codesign)
         run: flutter build ipa --release --no-codesign
