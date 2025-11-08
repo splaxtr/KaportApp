@@ -1,0 +1,156 @@
+name: Flutter iOS Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - "v*"
+
+jobs:
+  build-ios:
+    name: Build and Upload iOS IPA
+    runs-on: macos-latest
+    permissions:
+      contents: write # allow tagging/version pushes
+    env:
+      FLUTTER_CHANNEL: stable
+
+    steps:
+      # --- Source checkout and shared env setup ---
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # grab full history so tags and version bumps work
+
+      - name: Load FIREBASE_OPTIONS from .env
+        run: |
+          if [ -f .env ]; then
+            FIREBASE_LINE=$(grep -E '^FIREBASE_OPTIONS=' .env | head -n 1 || true)
+            if [ -n "$FIREBASE_LINE" ]; then
+              FIREBASE_VALUE=${FIREBASE_LINE#FIREBASE_OPTIONS=}
+              {
+                echo "FIREBASE_OPTIONS<<'EOF'"
+                echo "$FIREBASE_VALUE"
+                echo "EOF"
+              } >> "$GITHUB_ENV"
+              echo "FIREBASE_OPTIONS exported for build"
+            else
+              echo "FIREBASE_OPTIONS not defined in .env (skipping export)"
+            fi
+          else
+            echo ".env file not found; proceeding without FIREBASE_OPTIONS"
+          fi
+
+      # --- Dependency caching and Flutter installation ---
+      - name: Cache pub dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: Setup Flutter (stable channel)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true # leverage built-in cache for the Flutter SDK
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
+
+      - name: Show Flutter & Dart versions
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Fetch Flutter dependencies
+        run: flutter pub get
+
+      - name: Precache iOS artifacts
+        run: flutter precache --ios
+
+      # --- Version management (only on branch pushes) ---
+      - name: Auto increment version in pubspec.yaml
+        id: bump_version
+        if: startsWith(github.ref, 'refs/heads/')
+        run: |
+          python3 <<'PY'
+import os
+import re
+from pathlib import Path
+
+pubspec = Path("pubspec.yaml")
+data = pubspec.read_text()
+match = re.search(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)", data, re.MULTILINE)
+if not match:
+    raise SystemExit("Version field not found in pubspec.yaml")
+
+semver, build = match.groups()
+new_build = int(build) + 1
+new_version = f"{semver}+{new_build}"
+pattern = re.compile(r"^version:\s*.*$", re.MULTILINE)
+updated = pattern.sub(f"version: {new_version}", data, count=1)
+pubspec.write_text(updated)
+
+print(f"Bumped version to {new_version}")
+with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+    fh.write(f"new_version={new_version}\n")
+PY
+
+      # --- Build and package the iOS app ---
+      - name: Build iOS IPA (release, no codesign)
+        run: flutter build ipa --release --no-codesign
+
+      - name: Locate generated IPA
+        id: locate_ipa
+        run: |
+          IPA_PATH=$(find build/ios/ipa -maxdepth 1 -name "*.ipa" -print -quit)
+          if [ -z "$IPA_PATH" ]; then
+            echo "Unable to find the generated .ipa in build/ios/ipa" >&2
+            exit 1
+          fi
+          echo "ipa_path=$IPA_PATH" >> "$GITHUB_OUTPUT"
+          echo "Located IPA at $IPA_PATH"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa-${{ steps.bump_version.outputs.new_version || github.ref_name || github.run_id }}
+          path: ${{ steps.locate_ipa.outputs.ipa_path }}
+
+      # --- Commit and tag the new version (branch pushes only) ---
+      - name: Configure git author
+        if: steps.bump_version.outputs.new_version != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit version bump
+        id: commit_version
+        if: steps.bump_version.outputs.new_version != ''
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -am "chore: bump version to v${{ steps.bump_version.outputs.new_version }} [skip ci]"
+
+      - name: Push version bump
+        if: steps.bump_version.outputs.new_version != ''
+        run: |
+          BRANCH="${GITHUB_REF##refs/heads/}"
+          git push origin "HEAD:$BRANCH"
+
+      - name: Create and push tag
+        if: steps.bump_version.outputs.new_version != ''
+        run: |
+          TAG="v${{ steps.bump_version.outputs.new_version }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists; skipping creation."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
