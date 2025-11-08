@@ -13,27 +13,17 @@ jobs:
     name: Build and Upload iOS IPA
     runs-on: macos-latest
     permissions:
-      contents: write # allow tagging/version pushes
+      contents: write
     env:
       FLUTTER_CHANNEL: stable
       FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS }}
 
     steps:
-      # --- Source checkout and shared env setup ---
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # grab full history so tags and version bumps work
+          fetch-depth: 0
 
-      - name: Verify FIREBASE_OPTIONS secret
-        run: |
-          if [ -z "${FIREBASE_OPTIONS:-}" ]; then
-            echo "FIREBASE_OPTIONS secret is missing" >&2
-            exit 1
-          fi
-          echo "FIREBASE_OPTIONS secret detected"
-
-      # --- Dependency caching and Flutter installation ---
       - name: Cache pub dependencies
         uses: actions/cache@v3
         with:
@@ -46,7 +36,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: ${{ env.FLUTTER_CHANNEL }}
-          cache: true # leverage built-in cache for the Flutter SDK
+          cache: true
 
       - name: Disable Flutter analytics
         run: flutter config --no-analytics
@@ -62,35 +52,28 @@ jobs:
       - name: Precache iOS artifacts
         run: flutter precache --ios
 
-      # --- Version management (only on branch pushes) ---
       - name: Auto increment version in pubspec.yaml
         id: bump_version
         if: startsWith(github.ref, 'refs/heads/')
         run: |
           python3 <<'PY'
-import os
-import re
+import os, re
 from pathlib import Path
-
 pubspec = Path("pubspec.yaml")
 data = pubspec.read_text()
-match = re.search(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)", data, re.MULTILINE)
-if not match:
+m = re.search(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)", data, re.MULTILINE)
+if not m:
     raise SystemExit("Version field not found in pubspec.yaml")
-
-semver, build = match.groups()
+semver, build = m.groups()
 new_build = int(build) + 1
 new_version = f"{semver}+{new_build}"
-pattern = re.compile(r"^version:\s*.*$", re.MULTILINE)
-updated = pattern.sub(f"version: {new_version}", data, count=1)
+updated = re.sub(r"^version:\s*.*$", f"version: {new_version}", data, count=1, flags=re.MULTILINE)
 pubspec.write_text(updated)
-
+with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+    f.write(f"new_version={new_version}\n")
 print(f"Bumped version to {new_version}")
-with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
-    fh.write(f"new_version={new_version}\n")
 PY
 
-      # --- Build and package the iOS app ---
       - name: Build iOS IPA (release, no codesign)
         run: flutter build ipa --release --no-codesign
 
@@ -99,19 +82,17 @@ PY
         run: |
           IPA_PATH=$(find build/ios/ipa -maxdepth 1 -name "*.ipa" -print -quit)
           if [ -z "$IPA_PATH" ]; then
-            echo "Unable to find the generated .ipa in build/ios/ipa" >&2
+            echo "Unable to find the generated .ipa" >&2
             exit 1
           fi
           echo "ipa_path=$IPA_PATH" >> "$GITHUB_OUTPUT"
-          echo "Located IPA at $IPA_PATH"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-v${{ steps.bump_version.outputs.new_version || github.ref_name || github.run_id }}
+          name: ios-ipa-${{ steps.bump_version.outputs.new_version || github.run_id }}
           path: ${{ steps.locate_ipa.outputs.ipa_path }}
 
-      # --- Commit and tag the new version (branch pushes only) ---
       - name: Configure git author
         if: steps.bump_version.outputs.new_version != ''
         run: |
@@ -119,14 +100,13 @@ PY
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Commit version bump
-        id: commit_version
         if: steps.bump_version.outputs.new_version != ''
         run: |
           if git diff --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git commit -am "chore: bump version to v${{ steps.bump_version.outputs.new_version }} [skip ci]"
+          git commit -am "chore(ci): bump version to v${{ steps.bump_version.outputs.new_version }} [skip ci]"
 
       - name: Push version bump
         if: steps.bump_version.outputs.new_version != ''
@@ -139,7 +119,7 @@ PY
         run: |
           TAG="v${{ steps.bump_version.outputs.new_version }}"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists; skipping creation."
+            echo "Tag $TAG already exists; skipping."
           else
             git tag "$TAG"
             git push origin "$TAG"
