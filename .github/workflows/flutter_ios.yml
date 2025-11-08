@@ -16,6 +16,7 @@ jobs:
       contents: write # allow tagging/version pushes
     env:
       FLUTTER_CHANNEL: stable
+      FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS }}
 
     steps:
       # --- Source checkout and shared env setup ---
@@ -24,24 +25,13 @@ jobs:
         with:
           fetch-depth: 0 # grab full history so tags and version bumps work
 
-      - name: Load FIREBASE_OPTIONS from .env
+      - name: Verify FIREBASE_OPTIONS secret
         run: |
-          if [ -f .env ]; then
-            FIREBASE_LINE=$(grep -E '^FIREBASE_OPTIONS=' .env | head -n 1 || true)
-            if [ -n "$FIREBASE_LINE" ]; then
-              FIREBASE_VALUE=${FIREBASE_LINE#FIREBASE_OPTIONS=}
-              {
-                echo "FIREBASE_OPTIONS<<'EOF'"
-                echo "$FIREBASE_VALUE"
-                echo "EOF"
-              } >> "$GITHUB_ENV"
-              echo "FIREBASE_OPTIONS exported for build"
-            else
-              echo "FIREBASE_OPTIONS not defined in .env (skipping export)"
-            fi
-          else
-            echo ".env file not found; proceeding without FIREBASE_OPTIONS"
+          if [ -z "${FIREBASE_OPTIONS:-}" ]; then
+            echo "FIREBASE_OPTIONS secret is missing" >&2
+            exit 1
           fi
+          echo "FIREBASE_OPTIONS secret detected"
 
       # --- Dependency caching and Flutter installation ---
       - name: Cache pub dependencies
@@ -118,7 +108,7 @@ PY
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-ipa-${{ steps.bump_version.outputs.new_version || github.ref_name || github.run_id }}
+          name: ios-v${{ steps.bump_version.outputs.new_version || github.ref_name || github.run_id }}
           path: ${{ steps.locate_ipa.outputs.ipa_path }}
 
       # --- Commit and tag the new version (branch pushes only) ---
