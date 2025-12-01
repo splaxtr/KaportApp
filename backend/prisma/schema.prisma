@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String     @id @default(uuid())
+  email              String     @unique
+  password           String
+  name               String
+  role               String     @default("null")
+  shopId             String?
+  shop               Shop?      @relation("ShopUsers", fields: [shopId], references: [id])
+  hashedRefreshToken String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  vehicles           Vehicle[]  @relation("VehicleCreator")
+  photos             Photo[]
+  activities         Activity[]
+  ownedShops         Shop[]     @relation("ShopOwner")
+}
+
+model Shop {
+  id        String    @id @default(uuid())
+  name      String
+  ownerId   String
+  owner     User      @relation("ShopOwner", fields: [ownerId], references: [id])
+  users     User[]    @relation("ShopUsers")
+  vehicles  Vehicle[]
+  parts     Part[]
+  photos    Photo[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Vehicle {
+  id           String     @id @default(uuid())
+  shopId       String
+  plate        String
+  brand        String
+  model        String
+  year         Int?
+  customerName String?
+  tcknVkn      String?
+  phone        String?
+  damageDate   DateTime?
+  fileNo       String?
+  expertName   String?
+
+  createdBy    String
+  creator      User       @relation("VehicleCreator", fields: [createdBy], references: [id])
+
+  shop         Shop       @relation(fields: [shopId], references: [id])
+  parts        Part[]
+  photos       Photo[]
+
+  createdAt    DateTime   @default(now())
+  deletedAt    DateTime?
+
+  @@unique([shopId, plate])
+}
+
+model Part {
+  id         String      @id @default(uuid())
+  shopId     String
+  vehicleId  String
+  name       String
+  position   String?
+  quantity   Int         @default(1)
+  statusKey  String
+
+  shop       Shop        @relation(fields: [shopId], references: [id])
+  vehicle    Vehicle     @relation(fields: [vehicleId], references: [id])
+  status     PartStatus  @relation(fields: [statusKey], references: [key])
+  histories  PartStatusHistory[]
+
+  createdAt  DateTime    @default(now())
+  deletedAt  DateTime?
+}
+
+model PartStatus {
+  key    String @id
+  label  String
+  color  String
+  order  Int
+
+  parts  Part[]
+
+  @@unique([order])
+}
+
+model PartStatusHistory {
+  id         String   @id @default(uuid())
+  partId     String
+  fromStatus String?
+  toStatus   String
+  changedAt  DateTime @default(now())
+  changedBy  String?
+
+  part       Part     @relation(fields: [partId], references: [id])
+
+  @@index([partId])
+}
+
+model Photo {
+  id          String   @id @default(uuid())
+  shopId      String
+  vehicleId   String
+  url         String
+  storagePath String
+  takenAt     DateTime @default(now())
+  addedBy     String
+
+  shop        Shop     @relation(fields: [shopId], references: [id])
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  user        User     @relation(fields: [addedBy], references: [id])
+}
+
+model Activity {
+  id        String   @id @default(uuid())
+  scope     String
+  refId     String
+  type      String
+  payload   Json
+  actorId   String
+  createdAt DateTime @default(now())
+
+  actor     User     @relation(fields: [actorId], references: [id])
+}

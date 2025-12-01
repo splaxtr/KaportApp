@@ -1,0 +1,9 @@
+node_modules
+dist
+uploads
+.env
+coverage
+.git
+prisma/migrations
+npm-debug.log
+Dockerfile
