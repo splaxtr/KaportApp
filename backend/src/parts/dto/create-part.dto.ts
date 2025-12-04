@@ -5,7 +5,7 @@ export class CreatePartDto {
   shopId: string;
 
   @IsString()
-  vehicleId: string;
+  caseId: string;
 
   @IsString()
   name: string;

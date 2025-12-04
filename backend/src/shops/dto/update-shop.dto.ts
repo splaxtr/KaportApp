@@ -4,4 +4,8 @@ export class UpdateShopDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  ownerId?: string;
 }

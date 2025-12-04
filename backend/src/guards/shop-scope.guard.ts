@@ -25,7 +25,6 @@ export class ShopScopeGuard implements CanActivate {
 
     const targetShopId =
       request.params?.shopId ||
-      request.params?.id ||
       request.body?.shopId ||
       request.query?.shopId ||
       null;

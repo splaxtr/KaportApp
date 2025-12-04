@@ -15,8 +15,8 @@ export class PartsController {
 
   @Get()
   @Roles('admin', 'owner', 'employee')
-  findByVehicle(@Query('vehicleId') vehicleId: string) {
-    return this.partsService.findByVehicle(vehicleId);
+  findByCase(@Query('caseId') caseId: string) {
+    return this.partsService.findByCase(caseId);
   }
 
   @Post()
@@ -35,5 +35,11 @@ export class PartsController {
   @Roles('admin', 'owner', 'employee')
   remove(@Param('id') id: string, @User('sub') userId: string) {
     return this.partsService.removeWithUser(id, userId);
+  }
+
+  @Get(':id/history')
+  @Roles('admin', 'owner', 'employee')
+  history(@Param('id') id: string) {
+    return this.partsService.history(id);
   }
 }

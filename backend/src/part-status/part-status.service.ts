@@ -8,7 +8,10 @@ export class PartStatusService {
   constructor(private prisma: PrismaService) {}
 
   findAll() {
-    return this.prisma.partStatus.findMany({ orderBy: { order: 'asc' } });
+    return this.prisma.partStatus.findMany({
+      where: { deletedAt: null },
+      orderBy: { order: 'asc' },
+    });
   }
 
   create(dto: CreateStatusDto) {
@@ -16,7 +19,9 @@ export class PartStatusService {
   }
 
   async update(key: string, dto: UpdateStatusDto) {
-    const exists = await this.prisma.partStatus.findUnique({ where: { key } });
+    const exists = await this.prisma.partStatus.findFirst({
+      where: { key, deletedAt: null },
+    });
     if (!exists) {
       throw new NotFoundException('Status not found');
     }
@@ -24,11 +29,16 @@ export class PartStatusService {
   }
 
   async remove(key: string) {
-    const exists = await this.prisma.partStatus.findUnique({ where: { key } });
+    const exists = await this.prisma.partStatus.findFirst({
+      where: { key, deletedAt: null },
+    });
     if (!exists) {
       throw new NotFoundException('Status not found');
     }
-    await this.prisma.partStatus.delete({ where: { key } });
-    return { success: true };
+    await this.prisma.partStatus.update({
+      where: { key },
+      data: { deletedAt: new Date() },
+    });
+    return { success: true, key };
   }
 }

@@ -18,9 +18,80 @@ export class VehiclesService {
     return this.prisma.vehicle.findMany({ where: { shopId, deletedAt: null } });
   }
 
+  findAllAdmin(filters: {
+    plate?: string;
+    brand?: string;
+    model?: string;
+    year?: number;
+    shopId?: string;
+    package?: string;
+    ownerId?: string;
+    includeHistory?: boolean;
+  }) {
+    return this.prisma.vehicle.findMany({
+      where: {
+        deletedAt: null,
+        shopId: filters.shopId || undefined,
+        plate: filters.plate ? { contains: filters.plate, mode: 'insensitive' } : undefined,
+        brand: filters.brand ? { contains: filters.brand, mode: 'insensitive' } : undefined,
+        model: filters.model ? { contains: filters.model, mode: 'insensitive' } : undefined,
+        year: filters.year || undefined,
+        package: filters.package
+          ? {
+              contains: filters.package,
+              mode: 'insensitive',
+            }
+          : undefined,
+        OR: filters.ownerId
+          ? [
+              { currentOwnerId: filters.ownerId },
+              {
+                ownerHistory: {
+                  some: {
+                    ownerId: filters.ownerId,
+                  },
+                },
+              },
+            ]
+          : undefined,
+      },
+      include: {
+        shop: { select: { id: true, name: true } },
+        currentOwner: { select: { id: true, name: true, phone: true, email: true } },
+        ownerHistory: filters.includeHistory ? true : false,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async findOne(id: string) {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id, deletedAt: null },
+    });
+    if (!vehicle) {
+      throw new NotFoundException('Vehicle not found');
+    }
+    return vehicle;
+  }
+
+  async findOneAdmin(id: string) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        shop: { select: { id: true, name: true } },
+        currentOwner: { select: { id: true, name: true, phone: true, email: true } },
+        cases: {
+          select: {
+            id: true,
+            caseNumber: true,
+            damageDate: true,
+            owner: { select: { id: true, name: true, phone: true } },
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        ownerHistory: true,
+      },
     });
     if (!vehicle) {
       throw new NotFoundException('Vehicle not found');
@@ -32,8 +103,9 @@ export class VehiclesService {
     const vehicle = await this.prisma.vehicle.create({
       data: {
         ...dto,
+        notes: dto.notes,
+        package: dto.package,
         createdBy: creatorId,
-        damageDate: dto.damageDate ? new Date(dto.damageDate) : undefined,
       },
     });
     await this.activitiesService.log(
@@ -52,7 +124,8 @@ export class VehiclesService {
       where: { id },
       data: {
         ...dto,
-        damageDate: dto.damageDate ? new Date(dto.damageDate) : undefined,
+        notes: dto.notes,
+        package: dto.package,
       },
     });
   }
@@ -73,22 +146,17 @@ export class VehiclesService {
     return { success: true };
   }
 
-  async timeline(vehicleId: string) {
+  async timeline(
+    vehicleId: string,
+    options: { type?: string; limit?: number; offset?: number } = {},
+  ) {
     await this.findOne(vehicleId);
     const activities = await this.prisma.activity.findMany({
       where: { refId: vehicleId },
       orderBy: { createdAt: 'desc' },
+      take: options.limit ?? 100,
+      skip: options.offset ?? 0,
     });
-    const histories = await this.prisma.partStatusHistory.findMany({
-      where: { part: { vehicleId } },
-      orderBy: { changedAt: 'desc' },
-    });
-    const activityEvents = activities.map((a) => ({ eventType: 'activity', ...a }));
-    const historyEvents = histories.map((h) => ({ eventType: 'partStatus', ...h }));
-    return [...activityEvents, ...historyEvents].sort((a: any, b: any) => {
-      const aDate = a.changedAt || a.createdAt;
-      const bDate = b.changedAt || b.createdAt;
-      return new Date(bDate as any).getTime() - new Date(aDate as any).getTime();
-    });
+    return activities;
   }
 }

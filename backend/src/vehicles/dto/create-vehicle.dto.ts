@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateVehicleDto {
   @IsString()
@@ -19,25 +19,9 @@ export class CreateVehicleDto {
 
   @IsOptional()
   @IsString()
-  customerName?: string;
+  package?: string;
 
   @IsOptional()
   @IsString()
-  tcknVkn?: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @IsOptional()
-  @IsDateString()
-  damageDate?: string;
-
-  @IsOptional()
-  @IsString()
-  fileNo?: string;
-
-  @IsOptional()
-  @IsString()
-  expertName?: string;
+  notes?: string;
 }

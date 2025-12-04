@@ -32,7 +32,13 @@ export class AuthService {
     });
 
     const tokens = await this.getTokens(user.id, user.role, user.shopId);
-    await this.updateRefreshToken(user.id, tokens.refreshToken);
+    await Promise.all([
+      this.updateRefreshToken(user.id, tokens.refreshToken),
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLogin: new Date() },
+      }),
+    ]);
 
     return { user: this.sanitizeUser(user), ...tokens };
   }
@@ -94,11 +100,11 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: process.env.JWT_SECRET,
-        expiresIn: '15m',
+        expiresIn: '7d',
       }),
       this.jwtService.signAsync(payload, {
         secret: process.env.JWT_REFRESH_SECRET,
-        expiresIn: '7d',
+        expiresIn: '14d',
       }),
     ]);
 

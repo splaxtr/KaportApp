@@ -12,4 +12,8 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   shopId?: string;
+
+  @IsOptional()
+  @IsString()
+  password?: string;
 }

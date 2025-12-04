@@ -15,11 +15,6 @@ export class PdfService {
       where: { id: vehicleId },
       include: {
         shop: true,
-        parts: {
-          include: { status: true },
-          orderBy: { createdAt: 'asc' },
-        },
-        photos: true,
       },
     });
 
@@ -56,35 +51,7 @@ export class PdfService {
     return Buffer.from(pdfBuffer);
   }
 
-  buildHtml(vehicle: any, baseUrl: string): string {
-    const partsRows = vehicle.parts
-      .map(
-        (p: any) => `
-        <tr>
-          <td>${p.name}</td>
-          <td>${p.position ?? '-'}</td>
-          <td>${p.quantity}</td>
-          <td>${p.status?.label ?? p.statusKey}</td>
-          <td>${p.status?.color ?? '-'}</td>
-        </tr>`,
-      )
-      .join('');
-
-    const normalizePhotoUrl = (url: string) => {
-      if (!url) return '';
-      if (url.startsWith('http')) return url;
-      const cleaned = url.startsWith('/') ? url : `/uploads/${url}`;
-      return `${baseUrl}${cleaned}`;
-    };
-
-    const photosGrid = vehicle.photos
-      .map(
-        (photo: any) => `
-        <div class="photo">
-          <img src="${normalizePhotoUrl(photo.url)}" alt="photo" />
-        </div>`,
-      )
-      .join('');
+  buildHtml(vehicle: any, _baseUrl: string): string {
 
     return `
     <!doctype html>
@@ -141,27 +108,12 @@ export class PdfService {
 
         <div class="section">
           <h2>Parçalar</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Parça</th>
-                <th>Konum</th>
-                <th>Adet</th>
-                <th>Durum</th>
-                <th>Renk</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${partsRows || '<tr><td colspan="5">Parça bulunamadı</td></tr>'}
-            </tbody>
-          </table>
+          <div class="field">Parça verisi bu sürümde rapora eklenmedi.</div>
         </div>
 
         <div class="section">
           <h2>Fotoğraflar</h2>
-          <div class="photos">
-            ${photosGrid || '<div class="field">Fotoğraf yok</div>'}
-          </div>
+          <div class="field">Fotoğraf verisi bu sürümde rapora eklenmedi.</div>
         </div>
       </div>
     </body>

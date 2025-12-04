@@ -10,6 +10,12 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ShopsModule } from './shops/shops.module';
 import { UsersModule } from './users/users.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
+import { CatalogModule } from './catalog/catalog.module';
+import { SystemConfigModule } from './system-config/system-config.module';
+import { AdminMetricsModule } from './admin-metrics/admin-metrics.module';
+import { VehicleCasesModule } from './vehicle-cases/vehicle-cases.module';
+import { CustomersModule } from './customers/customers.module';
+import { VehicleTasksModule } from './vehicle-tasks/vehicle-tasks.module';
 
 @Module({
   imports: [
@@ -23,6 +29,12 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     PhotosModule,
     ActivitiesModule,
     PdfModule,
+    CatalogModule,
+    SystemConfigModule,
+    AdminMetricsModule,
+    VehicleCasesModule,
+    CustomersModule,
+    VehicleTasksModule,
   ],
 })
 export class AppModule implements NestModule {

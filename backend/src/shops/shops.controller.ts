@@ -53,4 +53,10 @@ export class ShopsController {
   removeEmployee(@Param('id') id: string, @Body('userId') userId: string) {
     return this.shopsService.removeEmployee(id, userId);
   }
+
+  @Delete(':id')
+  @Roles('admin')
+  softDelete(@Param('id') id: string) {
+    return this.shopsService.softDelete(id);
+  }
 }

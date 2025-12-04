@@ -3,8 +3,10 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Post,
+  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -49,8 +51,9 @@ export class PhotosController {
       }),
       limits: { fileSize: 10 * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
-        if (file.mimetype !== 'image/jpeg' && file.mimetype !== 'image/png') {
-          return cb(new BadRequestException('Only JPEG/PNG allowed'), false);
+        const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowed.includes(file.mimetype)) {
+          return cb(new BadRequestException('Only JPEG/PNG/WEBP allowed'), false);
         }
         cb(null, true);
       },
@@ -67,6 +70,12 @@ export class PhotosController {
     const publicUrl = `/uploads/${file.filename}`;
     const storagePath = file.path;
     return this.photosService.createFromFile(dto, userId, publicUrl, storagePath);
+  }
+
+  @Get()
+  @Roles('admin', 'owner', 'employee')
+  list(@Query('caseId') caseId?: string, @Query('shopId') shopId?: string) {
+    return this.photosService.findMany({ caseId, shopId });
   }
 
   @Delete(':id')

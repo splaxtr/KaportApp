@@ -21,6 +21,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     let message: string | string[] = 'Internal server error';
     let code: string | undefined;
+    const error = exception instanceof Error ? exception.name : 'Error';
 
     if (exception instanceof HttpException) {
       const res = exception.getResponse() as any;
@@ -28,12 +29,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
       code = res?.code;
     } else if (exception instanceof Error) {
       message = exception.message;
+      code = 'INTERNAL_ERROR';
     }
 
     response.status(status).json({
       statusCode: status,
       message,
       code,
+      error,
       path: request.url,
       timestamp: new Date().toISOString(),
     });

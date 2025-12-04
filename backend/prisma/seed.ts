@@ -11,6 +11,9 @@ async function main() {
       { key: 'shipping', label: 'Yolda', color: '#c084fc', order: 3 },
       { key: 'arrived', label: 'Geldi', color: '#34d399', order: 4 },
       { key: 'installed', label: 'Takıldı', color: '#10b981', order: 5 },
+      { key: 'repair_pending', label: 'Tamir Edilecek', color: '#f59e0b', order: 6 },
+      { key: 'repair_sent', label: 'Tamire Gönderildi', color: '#f97316', order: 7 },
+      { key: 'repaired', label: 'Tamir Edildi', color: '#22c55e', order: 8 },
     ],
     skipDuplicates: true,
   });

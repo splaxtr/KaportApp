@@ -15,8 +15,18 @@ export class VehiclesController {
 
   @Get()
   @Roles('admin', 'owner', 'employee')
-  findAll(@Query('shopId') shopId?: string) {
-    return this.vehiclesService.findAllByShop(shopId);
+  findAll(
+    @Query('shopId') shopId?: string,
+    @Query('plate') plate?: string,
+    @Query('ownerId') ownerId?: string,
+    @Query('includeHistory') includeHistory?: string,
+  ) {
+    return this.vehiclesService.findAllAdmin({
+      shopId,
+      plate,
+      ownerId,
+      includeHistory: includeHistory === 'true',
+    });
   }
 
   @Get(':id')
@@ -27,8 +37,17 @@ export class VehiclesController {
 
   @Get(':id/timeline')
   @Roles('admin', 'owner', 'employee')
-  timeline(@Param('id') id: string) {
-    return this.vehiclesService.timeline(id);
+  timeline(
+    @Param('id') id: string,
+    @Query('type') type?: string,
+    @Query('limit') limit = '100',
+    @Query('offset') offset = '0',
+  ) {
+    return this.vehiclesService.timeline(id, {
+      type,
+      limit: Number(limit) || 100,
+      offset: Number(offset) || 0,
+    });
   }
 
   @Post()

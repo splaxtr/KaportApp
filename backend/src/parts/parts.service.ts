@@ -11,19 +11,13 @@ export class PartsService {
     private activitiesService: ActivitiesService,
   ) {}
 
-  findByVehicle(vehicleId: string) {
-    return this.prisma.part.findMany({ where: { vehicleId, deletedAt: null } });
+  findByCase(caseId: string) {
+    return this.prisma.part.findMany({ where: { caseId, deletedAt: null } });
   }
 
   async create(dto: CreatePartDto, userId: string) {
     const part = await this.prisma.part.create({ data: dto });
-    await this.activitiesService.log(
-      userId,
-      dto.shopId,
-      `Part created: ${part.name}`,
-      part.vehicleId,
-      'part',
-    );
+    await this.activitiesService.log(userId, dto.shopId, `Part created: ${part.name}`, part.caseId || undefined, 'part');
     return part;
   }
 
@@ -45,7 +39,7 @@ export class PartsService {
         userId,
         exists.shopId,
         `Part status changed: ${exists.statusKey} -> ${dto.statusKey}`,
-        exists.vehicleId,
+        exists.caseId || undefined,
         'part',
       );
     }
@@ -54,7 +48,7 @@ export class PartsService {
       userId,
       exists.shopId,
       `Part updated: ${exists.name}`,
-      exists.vehicleId,
+      exists.caseId || undefined,
       'part',
     );
     return updated;
@@ -73,9 +67,16 @@ export class PartsService {
       userId,
       exists.shopId,
       `Part deleted: ${exists.name}`,
-      exists.vehicleId,
+      exists.caseId || undefined,
       'part',
     );
     return { success: true };
+  }
+
+  history(partId: string) {
+    return this.prisma.partStatusHistory.findMany({
+      where: { partId },
+      orderBy: { changedAt: 'desc' },
+    });
   }
 }
