@@ -19,48 +19,74 @@ export class VehicleTasksService {
 
   async list(caseId: string) {
     await this.ensureCase(caseId);
-    return this.prisma.vehicleTask.findMany({
-      where: { caseId, deletedAt: null },
+    return this.prisma.caseOperation.findMany({
+      where: { caseId },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async create(caseId: string, dto: CreateVehicleTaskDto, userId: string) {
     const vc = await this.ensureCase(caseId);
-    const task = await this.prisma.vehicleTask.create({
+    const op = await this.prisma.caseOperation.create({
       data: {
         caseId,
         title: dto.title,
         status: dto.status || 'pending',
         notes: dto.notes,
+        hours: dto.hours ?? null,
+        cost: dto.cost ?? null,
       },
     });
-    await this.activities.log(userId, vc.vehicle.shopId, `İşlem eklendi: ${dto.title}`, vc.vehicleId, 'task');
-    return task;
+    await this.activities.create({
+      scope: 'vehicle_case',
+      refId: caseId,
+      message: `İşlem eklendi: ${dto.title}`,
+      payload: { operationId: op.id, caseId, plate: vc.vehicle.plate },
+      type: 'operation_added',
+      actorId: userId,
+      shopId: vc.vehicle.shopId,
+    });
+    return op;
   }
 
   async update(id: string, dto: UpdateVehicleTaskDto, userId: string) {
-    const exists = await this.prisma.vehicleTask.findFirst({ where: { id, deletedAt: null }, include: { case: { include: { vehicle: true } } } });
+    const exists = await this.prisma.caseOperation.findUnique({ where: { id }, include: { case: { include: { vehicle: true } } } });
     if (!exists) throw new NotFoundException('Task not found');
-    const updated = await this.prisma.vehicleTask.update({
+    const updated = await this.prisma.caseOperation.update({
       where: { id },
-      data: { ...dto },
+      data: {
+        title: dto.title ?? undefined,
+        status: dto.status ?? undefined,
+        notes: dto.notes ?? undefined,
+        hours: dto.hours ?? undefined,
+        cost: dto.cost ?? undefined,
+      },
     });
-    await this.activities.log(
-      userId,
-      exists.case.vehicle.shopId,
-      `İşlem güncellendi: ${dto.title || updated.title}`,
-      exists.case.vehicleId,
-      'task',
-    );
+    await this.activities.create({
+      scope: 'vehicle_case',
+      refId: updated.caseId,
+      message: `İşlem güncellendi: ${updated.title}`,
+      payload: { operationId: updated.id, caseId: updated.caseId },
+      type: 'operation_updated',
+      actorId: userId,
+      shopId: exists.case.vehicle.shopId,
+    });
     return updated;
   }
 
   async remove(id: string, userId: string) {
-    const exists = await this.prisma.vehicleTask.findFirst({ where: { id, deletedAt: null }, include: { case: { include: { vehicle: true } } } });
+    const exists = await this.prisma.caseOperation.findUnique({ where: { id }, include: { case: { include: { vehicle: true } } } });
     if (!exists) throw new NotFoundException('Task not found');
-    await this.prisma.vehicleTask.update({ where: { id }, data: { deletedAt: new Date() } });
-    await this.activities.log(userId, exists.case.vehicle.shopId, `İşlem silindi: ${exists.title}`, exists.case.vehicleId, 'task');
+    await this.prisma.caseOperation.delete({ where: { id } });
+    await this.activities.create({
+      scope: 'vehicle_case',
+      refId: exists.caseId,
+      message: `İşlem silindi: ${exists.title}`,
+      payload: { operationId: exists.id, caseId: exists.caseId },
+      type: 'operation_deleted',
+      actorId: userId,
+      shopId: exists.case.vehicle.shopId,
+    });
     return { success: true };
   }
 }

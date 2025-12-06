@@ -8,7 +8,14 @@ export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
   create(dto: CreateCustomerDto) {
-    return this.prisma.customer.create({ data: dto });
+    return this.prisma.customer.create({
+      data: {
+        name: dto.name.trim(),
+        tcVkn: dto.tcVkn?.trim(),
+        phone: dto.phone?.trim(),
+        email: dto.email?.trim(),
+      },
+    });
   }
 
   findAll() {
@@ -23,7 +30,15 @@ export class CustomersService {
 
   async update(id: string, dto: UpdateCustomerDto) {
     await this.findOne(id);
-    return this.prisma.customer.update({ where: { id }, data: dto });
+    return this.prisma.customer.update({
+      where: { id },
+      data: {
+        name: dto.name?.trim(),
+        tcVkn: dto.tcVkn?.trim(),
+        phone: dto.phone?.trim(),
+        email: dto.email?.trim(),
+      },
+    });
   }
 
   async remove(id: string) {

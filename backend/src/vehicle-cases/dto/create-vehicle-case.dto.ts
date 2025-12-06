@@ -31,4 +31,8 @@ export class CreateVehicleCaseDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
 }

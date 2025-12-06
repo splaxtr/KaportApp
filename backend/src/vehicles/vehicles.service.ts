@@ -2,95 +2,50 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ActivitiesService } from '../activities/activities.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
-import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 
 @Injectable()
 export class VehiclesService {
   constructor(
-    private prisma: PrismaService,
-    private activitiesService: ActivitiesService,
+    private readonly prisma: PrismaService,
+    private readonly activitiesService: ActivitiesService,
   ) {}
 
-  findAllByShop(shopId?: string) {
-    if (!shopId) {
-      return this.prisma.vehicle.findMany({ where: { deletedAt: null } });
-    }
-    return this.prisma.vehicle.findMany({ where: { shopId, deletedAt: null } });
-  }
-
-  findAllAdmin(filters: {
-    plate?: string;
-    brand?: string;
-    model?: string;
-    year?: number;
-    shopId?: string;
-    package?: string;
-    ownerId?: string;
-    includeHistory?: boolean;
-  }) {
+  findAll(filters: { plate?: string } = {}) {
     return this.prisma.vehicle.findMany({
       where: {
-        deletedAt: null,
-        shopId: filters.shopId || undefined,
         plate: filters.plate ? { contains: filters.plate, mode: 'insensitive' } : undefined,
-        brand: filters.brand ? { contains: filters.brand, mode: 'insensitive' } : undefined,
-        model: filters.model ? { contains: filters.model, mode: 'insensitive' } : undefined,
-        year: filters.year || undefined,
-        package: filters.package
-          ? {
-              contains: filters.package,
-              mode: 'insensitive',
-            }
-          : undefined,
-        OR: filters.ownerId
-          ? [
-              { currentOwnerId: filters.ownerId },
-              {
-                ownerHistory: {
-                  some: {
-                    ownerId: filters.ownerId,
-                  },
-                },
-              },
-            ]
-          : undefined,
       },
       include: {
-        shop: { select: { id: true, name: true } },
-        currentOwner: { select: { id: true, name: true, phone: true, email: true } },
-        ownerHistory: filters.includeHistory ? true : false,
+        cases: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            caseNumber: true,
+            damageDate: true,
+            status: true,
+            createdAt: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findOne(id: string) {
-    const vehicle = await this.prisma.vehicle.findFirst({
-      where: { id, deletedAt: null },
-    });
-    if (!vehicle) {
-      throw new NotFoundException('Vehicle not found');
-    }
-    return vehicle;
-  }
-
-  async findOneAdmin(id: string) {
-    const vehicle = await this.prisma.vehicle.findFirst({
-      where: { id, deletedAt: null },
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id },
       include: {
-        shop: { select: { id: true, name: true } },
-        currentOwner: { select: { id: true, name: true, phone: true, email: true } },
         cases: {
+          orderBy: { createdAt: 'desc' },
           select: {
             id: true,
             caseNumber: true,
             damageDate: true,
-            owner: { select: { id: true, name: true, phone: true } },
+            status: true,
             createdAt: true,
           },
-          orderBy: { createdAt: 'desc' },
         },
-        ownerHistory: true,
       },
     });
     if (!vehicle) {
@@ -99,64 +54,88 @@ export class VehiclesService {
     return vehicle;
   }
 
+  async findCases(vehicleId: string) {
+    await this.findOne(vehicleId);
+    return this.prisma.vehicleCase.findMany({
+      where: { vehicleId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        caseNumber: true,
+        damageDate: true,
+        status: true,
+        createdAt: true,
+        ownerId: true,
+      },
+    });
+  }
+
   async create(dto: CreateVehicleDto, creatorId: string) {
+    const normalizedPlate = dto.plate?.trim()?.toUpperCase();
+    const parsedDamageDate =
+      dto.damageDate && !isNaN(new Date(dto.damageDate).getTime()) ? new Date(dto.damageDate) : null;
+
+    const existing = await this.prisma.vehicle.findUnique({
+      where: { plate: normalizedPlate },
+    });
+
+    if (existing) {
+      const newCase = await this.prisma.vehicleCase.create({
+        data: {
+          vehicleId: existing.id,
+          ownerId: dto.ownerId,
+          damageDate: parsedDamageDate,
+          caseNumber: dto.caseNumber,
+          expertName: dto.expertName,
+          phone: dto.phone,
+          tcVkn: dto.tcVkn,
+          notes: dto.notes,
+        },
+      });
+
+      await this.activitiesService.create(
+        { message: 'New case created for existing vehicle', plate: existing.plate, caseId: newCase.id },
+        creatorId,
+        'vehicle_case',
+        newCase.id,
+        'case_created',
+      );
+
+      return { vehicle: existing, case: newCase };
+    }
+
     const vehicle = await this.prisma.vehicle.create({
       data: {
-        ...dto,
-        notes: dto.notes,
-        package: dto.package,
+        plate: normalizedPlate,
+        brand: dto.brand || null,
+        model: dto.model || null,
+        year: dto.year,
+        currentOwnerId: dto.ownerId,
         createdBy: creatorId,
       },
     });
-    await this.activitiesService.log(
-      creatorId,
-      dto.shopId,
-      `Vehicle created: ${vehicle.plate}`,
-      vehicle.id,
-      'vehicle',
-    );
-    return vehicle;
-  }
 
-  async update(id: string, dto: UpdateVehicleDto) {
-    await this.findOne(id);
-    return this.prisma.vehicle.update({
-      where: { id },
+    const newCase = await this.prisma.vehicleCase.create({
       data: {
-        ...dto,
+        vehicleId: vehicle.id,
+        ownerId: dto.ownerId,
+        damageDate: parsedDamageDate,
+        caseNumber: dto.caseNumber,
+        expertName: dto.expertName,
+        phone: dto.phone,
+        tcVkn: dto.tcVkn,
         notes: dto.notes,
-        package: dto.package,
       },
     });
-  }
 
-  async remove(id: string, userId: string) {
-    const vehicle = await this.findOne(id);
-    await this.prisma.vehicle.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
-    await this.activitiesService.log(
-      userId,
-      vehicle.shopId,
-      `Vehicle deleted: ${vehicle.plate}`,
-      vehicle.id,
-      'vehicle',
+    await this.activitiesService.create(
+      { message: 'Vehicle created with first case', plate: normalizedPlate, caseId: newCase.id },
+      creatorId,
+      'vehicle_case',
+      newCase.id,
+      'vehicle_created',
     );
-    return { success: true };
-  }
 
-  async timeline(
-    vehicleId: string,
-    options: { type?: string; limit?: number; offset?: number } = {},
-  ) {
-    await this.findOne(vehicleId);
-    const activities = await this.prisma.activity.findMany({
-      where: { refId: vehicleId },
-      orderBy: { createdAt: 'desc' },
-      take: options.limit ?? 100,
-      skip: options.offset ?? 0,
-    });
-    return activities;
+    return { vehicle, case: newCase };
   }
 }

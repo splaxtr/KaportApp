@@ -2,20 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Car, Image as ImageIcon } from "lucide-react";
+import { LayoutDashboard, Car, Users, UserCog, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/employee", label: "Overview", icon: Activity },
-  { href: "/employee/vehicles", label: "Vehicles", icon: Car },
-  { href: "/employee/photos", label: "Photos", icon: ImageIcon },
+  { href: "/employee", label: "Panel", icon: LayoutDashboard },
+  { href: "/employee/vehicles", label: "Araçlar", icon: Car },
+  { href: "/employee/customers", label: "Müşteriler", icon: Users },
+  { href: "/employee/employees", label: "Çalışanlar", icon: UserCog },
+  { href: "/employee/settings", label: "Dükkan Ayarları", icon: Store },
 ];
 
 export function SidebarEmployee() {
   const pathname = usePathname();
   return (
     <aside className="hidden w-64 shrink-0 border-r border-border bg-card/70 p-4 lg:block">
-      <div className="mb-6 text-lg font-semibold text-foreground">Kaporta Employee</div>
+      <div className="mb-6 text-lg font-semibold text-foreground">Kaporta Çalışan</div>
       <nav className="space-y-1">
         {links.map((link) => {
           const active = pathname === link.href;

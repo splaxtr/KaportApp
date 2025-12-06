@@ -3,10 +3,6 @@ import { IsDateString, IsOptional, IsString } from 'class-validator';
 export class CreatePhotoDto {
   @IsOptional()
   @IsString()
-  shopId?: string;
-
-  @IsOptional()
-  @IsString()
   caseId?: string;
 
   @IsOptional()

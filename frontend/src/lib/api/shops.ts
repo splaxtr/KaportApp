@@ -49,6 +49,10 @@ export function getShop(id: string, token: string) {
   return fetchWithAuth<ShopRow>(`/admin/shops/${id}`, token);
 }
 
+export function getShopEmployees(shopId: string, token: string) {
+  return fetchWithAuth<UserOption[]>(`/shops/${shopId}/employees`, token, {}, []);
+}
+
 export function getUsers(token: string) {
   return fetchWithAuth<UserOption[]>("/admin/users", token, {}, []);
 }

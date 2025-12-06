@@ -6,10 +6,16 @@ export class CreateVehicleTaskDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['pending', 'in_progress', 'done'])
+  @IsIn(['pending', 'done'])
   status?: string;
 
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  hours?: number;
+
+  @IsOptional()
+  cost?: number;
 }

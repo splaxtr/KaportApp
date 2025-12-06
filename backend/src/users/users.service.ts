@@ -17,6 +17,7 @@ export class UsersService {
         shopId: true,
         shop: { select: { id: true, name: true } },
         createdAt: true,
+        lastLogin: true,
         updatedAt: true,
       },
     });
@@ -33,6 +34,7 @@ export class UsersService {
         shopId: true,
         shop: { select: { id: true, name: true } },
         createdAt: true,
+        lastLogin: true,
         updatedAt: true,
       },
     });
@@ -56,6 +58,7 @@ export class UsersService {
         shopId: true,
         shop: { select: { id: true, name: true } },
         createdAt: true,
+        lastLogin: true,
         updatedAt: true,
       },
     });
@@ -80,6 +83,7 @@ export class UsersService {
         shopId: true,
         shop: { select: { id: true, name: true } },
         createdAt: true,
+        lastLogin: true,
         updatedAt: true,
       },
     });
@@ -104,6 +108,7 @@ export class UsersService {
         shopId: true,
         shop: { select: { id: true, name: true } },
         createdAt: true,
+        lastLogin: true,
         updatedAt: true,
       },
     });
@@ -122,6 +127,7 @@ export class UsersService {
         shopId: true,
         shop: { select: { id: true, name: true } },
         createdAt: true,
+        lastLogin: true,
         updatedAt: true,
       },
     });

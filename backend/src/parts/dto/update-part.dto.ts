@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class UpdatePartDto {
   @IsOptional()
@@ -7,14 +7,8 @@ export class UpdatePartDto {
 
   @IsOptional()
   @IsString()
-  position?: string;
+  status?: string;
 
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  quantity?: number;
-
-  @IsOptional()
-  @IsString()
-  statusKey?: string;
+  price?: number;
 }

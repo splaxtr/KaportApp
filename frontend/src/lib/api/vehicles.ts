@@ -62,6 +62,7 @@ export type VehicleRow = {
     caseNumber?: string | null;
     damageDate?: string | null;
     createdAt?: string;
+    status?: string | null;
     owner?: { id: string; name?: string | null; phone?: string | null };
   }[];
 };
@@ -87,6 +88,15 @@ export function getVehicles(token: string, filters: VehicleFilters = {}) {
   return fetchWithAuth<VehicleRow[]>(`/admin/vehicles${qs ? `?${qs}` : ""}`, token, { fallback: [] });
 }
 
+export function getShopVehicles(token: string, shopId: string, filters: Omit<VehicleFilters, "shopId"> = {}) {
+  const params = new URLSearchParams({ shopId });
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") params.append(k, String(v));
+  });
+  const qs = params.toString();
+  return fetchWithAuth<VehicleRow[]>(`/vehicles${qs ? `?${qs}` : ""}`, token, { fallback: [] });
+}
+
 export function searchVehicles(params: VehicleFilters, token: string) {
   return getVehicles(token, params);
 }
@@ -102,6 +112,10 @@ export function deleteVehicle(id: string, token: string) {
   return fetchWithAuth<{ success: boolean }>(`/admin/vehicles/${id}`, token, { method: "DELETE" });
 }
 
+export function deleteVehicleScoped(id: string, token: string) {
+  return fetchWithAuth<{ success: boolean }>(`/vehicles/${id}`, token, { method: "DELETE" });
+}
+
 export function getVehicle(id: string, token: string, includeHistory = false) {
   const qs = includeHistory ? "?includeHistory=true" : "";
   return fetchWithAuth<VehicleRow>(`/admin/vehicles/${id}${qs}`, token);
@@ -110,6 +124,14 @@ export function getVehicle(id: string, token: string, includeHistory = false) {
 export function getVehicleActivity(id: string, token: string) {
   return fetchWithAuth<{ id: string; message?: string; payload?: any; createdAt: string; actor?: any }[]>(
     `/admin/vehicles/${id}/activity`,
+    token,
+    { fallback: [] }
+  );
+}
+
+export function getVehicleTimeline(id: string, token: string, limit = 50, offset = 0) {
+  return fetchWithAuth<any[]>(
+    `/vehicles/${id}/timeline?limit=${limit}&offset=${offset}`,
     token,
     { fallback: [] }
   );
@@ -154,6 +176,13 @@ export function deleteTask(id: string, token: string) {
   return fetchWithAuth<{ success: boolean }>(`/tasks/${id}`, token, { method: "DELETE" });
 }
 
+export function updateCaseStatus(caseId: string, status: string, token: string) {
+  return fetchWithAuth(`/cases/${caseId}`, token, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
 export function transferVehicleOwner(id: string, newOwnerId: string, token: string) {
   return fetchWithAuth<VehicleRow>(`/admin/vehicles/${id}/transfer-owner`, token, {
     method: "POST",
@@ -196,6 +225,28 @@ export function getVehiclePackages(token: string, brand: string, model: string, 
   if (year) params.append("year", String(year));
   if (shopId) params.append("shopId", shopId);
   return fetchWithAuth<{ name: string }[]>(`/vehicles/catalog/packages?${params.toString()}`, token, { fallback: [] });
+}
+
+// Shop-scope (owner/employee) endpoints
+export function createVehicleScoped(
+  data: Partial<VehicleRow> & { ownerId: string; shopId: string; plate: string },
+  token: string
+) {
+  return fetchWithAuth<VehicleRow>(`/vehicles`, token, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateVehicleScoped(id: string, data: Partial<VehicleRow>, token: string) {
+  return fetchWithAuth<VehicleRow>(`/vehicles/${id}`, token, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function getVehicleScoped(id: string, token: string) {
+  return fetchWithAuth<VehicleRow>(`/vehicles/${id}`, token);
 }
 
 export function uploadVehiclePhoto(

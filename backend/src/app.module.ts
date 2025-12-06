@@ -16,6 +16,7 @@ import { AdminMetricsModule } from './admin-metrics/admin-metrics.module';
 import { VehicleCasesModule } from './vehicle-cases/vehicle-cases.module';
 import { CustomersModule } from './customers/customers.module';
 import { VehicleTasksModule } from './vehicle-tasks/vehicle-tasks.module';
+import { CasesModule } from './cases/cases.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { VehicleTasksModule } from './vehicle-tasks/vehicle-tasks.module';
     VehicleCasesModule,
     CustomersModule,
     VehicleTasksModule,
+    CasesModule,
   ],
 })
 export class AppModule implements NestModule {

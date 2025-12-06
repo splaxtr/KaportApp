@@ -1,24 +1,12 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class CreatePartDto {
   @IsString()
-  shopId: string;
-
-  @IsString()
-  caseId: string;
-
-  @IsString()
   name: string;
 
-  @IsOptional()
   @IsString()
-  position?: string;
+  status: string;
 
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  quantity?: number;
-
-  @IsString()
-  statusKey: string;
+  price?: number;
 }

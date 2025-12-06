@@ -28,4 +28,8 @@ export class UpdateVehicleCaseDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
 }

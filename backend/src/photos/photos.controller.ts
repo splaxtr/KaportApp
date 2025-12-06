@@ -1,12 +1,10 @@
 import {
   BadRequestException,
-  Body,
   Controller,
   Delete,
   Get,
   Param,
   Post,
-  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -22,7 +20,6 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { User } from '../common/decorators/user.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ShopScopeGuard } from '../guards/shop-scope.guard';
-import { CreatePhotoDto } from './dto/create-photo.dto';
 import { PhotosService } from './photos.service';
 
 const rawUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
@@ -30,12 +27,12 @@ const uploadDir = rawUploadDir.startsWith('~')
   ? path.join(os.homedir(), rawUploadDir.slice(1))
   : rawUploadDir;
 
-@Controller('photos')
+@Controller()
 @UseGuards(AuthGuard('jwt'), RolesGuard, ShopScopeGuard)
 export class PhotosController {
   constructor(private readonly photosService: PhotosService) {}
 
-  @Post('upload')
+  @Post('cases/:caseId/photos')
   @Roles('admin', 'owner', 'employee')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -60,8 +57,8 @@ export class PhotosController {
     }),
   )
   upload(
+    @Param('caseId') caseId: string,
     @UploadedFile() file: Express.Multer.File,
-    @Body() dto: CreatePhotoDto,
     @User('sub') userId: string,
   ) {
     if (!file) {
@@ -69,16 +66,16 @@ export class PhotosController {
     }
     const publicUrl = `/uploads/${file.filename}`;
     const storagePath = file.path;
-    return this.photosService.createFromFile(dto, userId, publicUrl, storagePath);
+    return this.photosService.createFromFile(caseId, userId, publicUrl, storagePath);
   }
 
-  @Get()
+  @Get('cases/:caseId/photos')
   @Roles('admin', 'owner', 'employee')
-  list(@Query('caseId') caseId?: string, @Query('shopId') shopId?: string) {
-    return this.photosService.findMany({ caseId, shopId });
+  list(@Param('caseId') caseId: string) {
+    return this.photosService.findMany(caseId);
   }
 
-  @Delete(':id')
+  @Delete('photos/:id')
   @Roles('admin', 'owner', 'employee')
   remove(@Param('id') id: string, @User('sub') userId: string) {
     return this.photosService.remove(id, userId);

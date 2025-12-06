@@ -4,20 +4,6 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  await prisma.partStatus.createMany({
-    data: [
-      { key: 'pending', label: 'Bekliyor', color: '#9ca3af', order: 1 },
-      { key: 'ordered', label: 'Sipariş Verildi', color: '#60a5fa', order: 2 },
-      { key: 'shipping', label: 'Yolda', color: '#c084fc', order: 3 },
-      { key: 'arrived', label: 'Geldi', color: '#34d399', order: 4 },
-      { key: 'installed', label: 'Takıldı', color: '#10b981', order: 5 },
-      { key: 'repair_pending', label: 'Tamir Edilecek', color: '#f59e0b', order: 6 },
-      { key: 'repair_sent', label: 'Tamire Gönderildi', color: '#f97316', order: 7 },
-      { key: 'repaired', label: 'Tamir Edildi', color: '#22c55e', order: 8 },
-    ],
-    skipDuplicates: true,
-  });
-
   const adminPassword = await bcrypt.hash('Admin123!', 10);
   const ownerPassword = await bcrypt.hash('Owner123!', 10);
   const employeePassword = await bcrypt.hash('Employee123!', 10);
@@ -70,15 +56,24 @@ async function main() {
     data: { shopId: shop.id },
   });
 
+  const customer = await prisma.customer.upsert({
+    where: { id: 'demo-customer-id' },
+    update: { name: 'Ahmet Erdem', phone: '+90 535 256 1337', email: 'ahmetsplaxtr@gmail.com' },
+    create: {
+      id: 'demo-customer-id',
+      name: 'Ahmet Erdem',
+      phone: '+90 535 256 1337',
+      email: 'ahmetsplaxtr@gmail.com',
+    },
+  });
+
   const vehicle = await prisma.vehicle.upsert({
     where: { id: 'demo-vehicle-id' },
     update: {
       plate: 'DEM123',
       brand: 'Toyota',
       model: 'Corolla',
-      customerName: 'Demo Customer',
-      phone: '5550000000',
-      shopId: shop.id,
+      currentOwnerId: customer.id,
       createdBy: admin.id,
     },
     create: {
@@ -86,55 +81,22 @@ async function main() {
       plate: 'DEM123',
       brand: 'Toyota',
       model: 'Corolla',
-      customerName: 'Demo Customer',
-      phone: '5550000000',
-      shopId: shop.id,
+      currentOwnerId: customer.id,
       createdBy: admin.id,
     },
   });
 
-  await prisma.part.createMany({
-    data: [
-      {
-        id: 'demo-part-1',
-        shopId: shop.id,
-        vehicleId: vehicle.id,
-        name: 'Kaput',
-        statusKey: 'pending',
-        quantity: 1,
-      },
-      {
-        id: 'demo-part-2',
-        shopId: shop.id,
-        vehicleId: vehicle.id,
-        name: 'Sağ Çamurluk',
-        statusKey: 'ordered',
-        quantity: 1,
-      },
-    ],
-    skipDuplicates: true,
-  });
-
-  await prisma.photo.createMany({
-    data: [
-      {
-        id: 'demo-photo-1',
-        shopId: shop.id,
-        vehicleId: vehicle.id,
-        url: 'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d',
-        storagePath: 'demo/remote-photo-1',
-        addedBy: admin.id,
-      },
-      {
-        id: 'demo-photo-2',
-        shopId: shop.id,
-        vehicleId: vehicle.id,
-        url: 'https://images.unsplash.com/photo-1502877828070-33b167ad6860',
-        storagePath: 'demo/remote-photo-2',
-        addedBy: admin.id,
-      },
-    ],
-    skipDuplicates: true,
+  await prisma.vehicleCase.upsert({
+    where: { id: 'demo-case-id' },
+    update: {},
+    create: {
+      id: 'demo-case-id',
+      vehicleId: vehicle.id,
+      ownerId: customer.id,
+      caseNumber: 'CASE-001',
+      status: 'new',
+      notes: 'Demo case',
+    },
   });
 }
 

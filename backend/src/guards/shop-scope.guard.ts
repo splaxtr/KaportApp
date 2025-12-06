@@ -1,9 +1,4 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -13,53 +8,40 @@ export class ShopScopeGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
+    if (!user) throw new ForbiddenException('Forbidden');
+    if (user.role === 'admin') return true;
 
-    if (!user) {
+    const shopId = await this.resolveShopId(request);
+    if (!shopId) return true;
+
+    if (!user.shopId || user.shopId !== shopId) {
       throw new ForbiddenException('Forbidden');
     }
+    return true;
+  }
 
-    const role = user.role;
-    if (role === 'admin') {
-      return true;
-    }
+  private async resolveShopId(request: any): Promise<string | undefined> {
+    const { params, body, query } = request;
 
-    const targetShopId =
-      request.params?.shopId ||
-      request.body?.shopId ||
-      request.query?.shopId ||
-      null;
+    if (body?.shopId) return body.shopId;
+    if (query?.shopId) return query.shopId;
+    if (params?.shopId) return params.shopId;
 
-    if (!targetShopId) {
-      return true;
-    }
-
-    const shop = await this.prisma.shop.findUnique({
-      where: { id: targetShopId as string },
-      select: { id: true, ownerId: true },
-    });
-
-    if (!shop) {
-      throw new ForbiddenException('Shop not found');
-    }
-
-    if (role === 'owner') {
-      if (shop.ownerId === user.sub || shop.ownerId === user.id) {
-        return true;
-      }
-      throw new ForbiddenException('Forbidden');
-    }
-
-    if (role === 'employee') {
-      const dbUser = await this.prisma.user.findUnique({
-        where: { id: user.sub || user.id },
-        select: { shopId: true },
+    const caseId = params?.caseId || body?.caseId || query?.caseId;
+    if (caseId) {
+      const vc = await this.prisma.vehicleCase.findUnique({
+        where: { id: caseId },
+        include: { vehicle: { select: { shopId: true } } },
       });
-      if (dbUser?.shopId === targetShopId) {
-        return true;
-      }
-      throw new ForbiddenException('Forbidden');
+      return vc?.vehicle?.shopId;
     }
 
-    throw new ForbiddenException('Forbidden');
+    const vehicleId = params?.vehicleId || body?.vehicleId || query?.vehicleId;
+    if (vehicleId) {
+      const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { shopId: true } });
+      return vehicle?.shopId;
+    }
+
+    return undefined;
   }
 }

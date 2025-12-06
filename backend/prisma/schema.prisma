@@ -19,10 +19,8 @@ model User {
   updatedAt          DateTime   @updatedAt
   lastLogin          DateTime?
   activities         Activity[]
-  photos             Photo[]
   ownedShops         Shop[]     @relation("ShopOwner")
   shop               Shop?      @relation("ShopUsers", fields: [shopId], references: [id])
-  vehicles           Vehicle[]  @relation("VehicleCreator")
 }
 
 model Shop {
@@ -33,45 +31,25 @@ model Shop {
   updatedAt      DateTime             @updatedAt
   deletedAt      DateTime?
   customVehicles CustomVehicleEntry[]
-  parts          Part[]
-  photos         Photo[]
   owner          User                 @relation("ShopOwner", fields: [ownerId], references: [id])
   users          User[]               @relation("ShopUsers")
-  vehicles       Vehicle[]
 }
 
 model Vehicle {
-  id             String                @id @default(uuid())
-  shopId         String
-  plate          String                @unique
-  brand          String
-  model          String
+  id             String        @id @default(uuid())
+  plate          String        @unique
+  brand          String?
+  model          String?
   year           Int?
-  createdBy      String
-  createdAt      DateTime              @default(now())
-  deletedAt      DateTime?
-  notes          String?
-  package        String?
   currentOwnerId String?
-  creator        User                  @relation("VehicleCreator", fields: [createdBy], references: [id])
-  currentOwner   Customer?             @relation("VehicleCurrentOwner", fields: [currentOwnerId], references: [id])
-  shop           Shop                  @relation(fields: [shopId], references: [id])
-  cases          VehicleCase[]
-  ownerHistory   VehicleOwnerHistory[]
-}
+  createdBy      String?
+  createdAt      DateTime      @default(now())
 
-model VehicleOwnerHistory {
-  id         String    @id @default(uuid())
-  vehicleId  String
-  ownerId    String
-  assignedAt DateTime  @default(now())
-  releasedAt DateTime?
-  owner      Customer  @relation(fields: [ownerId], references: [id])
-  vehicle    Vehicle   @relation(fields: [vehicleId], references: [id])
+  cases          VehicleCase[]
 }
 
 model VehicleCase {
-  id         String     @id @default(uuid())
+  id         String        @id @default(uuid())
   vehicleId  String
   ownerId    String?
   caseNumber String?
@@ -80,64 +58,15 @@ model VehicleCase {
   phone      String?
   tcVkn      String?
   notes      String?
-  createdAt  DateTime   @default(now())
+  status     CaseStatus    @default(opened)
+  closedAt   DateTime?
+  createdAt  DateTime      @default(now())
+
+  vehicle    Vehicle       @relation(fields: [vehicleId], references: [id])
+  photos     CasePhoto[]
+  parts      CasePart[]
+  operations CaseOperation[]
   activities Activity[]
-  parts      Part[]
-  photos     Photo[]
-  tasks      VehicleTask[]
-  owner      Customer?  @relation("VehicleCaseOwner", fields: [ownerId], references: [id])
-  vehicle    Vehicle    @relation(fields: [vehicleId], references: [id])
-}
-
-model Part {
-  id        String              @id @default(uuid())
-  shopId    String
-  name      String
-  position  String?
-  quantity  Int                 @default(1)
-  statusKey String
-  createdAt DateTime            @default(now())
-  deletedAt DateTime?
-  caseId    String?
-  case      VehicleCase?        @relation(fields: [caseId], references: [id])
-  shop      Shop                @relation(fields: [shopId], references: [id])
-  status    PartStatus          @relation(fields: [statusKey], references: [key])
-  histories PartStatusHistory[]
-}
-
-model PartStatus {
-  key       String    @id
-  label     String
-  color     String
-  order     Int       @unique
-  deletedAt DateTime?
-  parts     Part[]
-}
-
-model PartStatusHistory {
-  id         String   @id @default(uuid())
-  partId     String
-  fromStatus String?
-  toStatus   String
-  changedAt  DateTime @default(now())
-  changedBy  String?
-  part       Part     @relation(fields: [partId], references: [id])
-
-  @@index([partId])
-}
-
-model Photo {
-  id          String       @id @default(uuid())
-  shopId      String
-  url         String
-  storagePath String
-  takenAt     DateTime     @default(now())
-  addedBy     String
-  deletedAt   DateTime?
-  caseId      String?
-  user        User         @relation(fields: [addedBy], references: [id])
-  case        VehicleCase? @relation(fields: [caseId], references: [id])
-  shop        Shop         @relation(fields: [shopId], references: [id])
 }
 
 model Activity {
@@ -160,9 +89,6 @@ model Customer {
   phone           String?
   email           String?
   createdAt       DateTime              @default(now())
-  currentVehicles Vehicle[]             @relation("VehicleCurrentOwner")
-  cases           VehicleCase[]         @relation("VehicleCaseOwner")
-  history         VehicleOwnerHistory[]
 }
 
 model SystemConfig {
@@ -180,19 +106,6 @@ model CustomVehicleEntry {
   createdAt DateTime @default(now())
   package   String?
   shop      Shop     @relation(fields: [shopId], references: [id])
-}
-
-model VehicleTask {
-  id        String       @id @default(uuid())
-  caseId    String
-  title     String
-  status    String       @default("pending")
-  notes     String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  deletedAt DateTime?
-
-  case      VehicleCase  @relation(fields: [caseId], references: [id])
 }
 
 model VehicleBrand {
@@ -224,4 +137,50 @@ model VehicleYear {
   model    VehicleModel @relation(fields: [modelId], references: [id])
 
   @@unique([year, modelId])
+}
+
+model CasePhoto {
+  id          String      @id @default(uuid())
+  caseId      String
+  url         String
+  storagePath String?
+  addedBy     String?
+  takenAt     DateTime?
+  createdAt   DateTime    @default(now())
+
+  case        VehicleCase @relation(fields: [caseId], references: [id])
+}
+
+model CasePart {
+  id     String      @id @default(uuid())
+  caseId String
+  name   String
+  status String      @default("pending")
+  price  Float?
+  createdAt DateTime @default(now())
+
+  case   VehicleCase @relation(fields: [caseId], references: [id])
+}
+
+model CaseOperation {
+  id        String      @id @default(uuid())
+  caseId    String
+  title     String
+  status    String    @default("pending")
+  notes     String?
+  hours     Float?
+  cost      Float?
+  createdAt DateTime  @default(now())
+
+  case      VehicleCase @relation(fields: [caseId], references: [id])
+}
+
+enum CaseStatus {
+  opened
+  inspection
+  parts_waiting
+  repairing
+  paint
+  ready
+  delivered
 }

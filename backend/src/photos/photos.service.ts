@@ -1,94 +1,57 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ActivitiesService } from '../activities/activities.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreatePhotoDto } from './dto/create-photo.dto';
 import * as fs from 'fs';
 
 @Injectable()
 export class PhotosService {
-  constructor(
-    private prisma: PrismaService,
-    private activitiesService: ActivitiesService,
-  ) {}
+  constructor(private prisma: PrismaService, private activitiesService: ActivitiesService) {}
 
-  findMany(filter: { caseId?: string; shopId?: string }) {
-    return this.prisma.photo.findMany({
-      where: {
-        deletedAt: null,
-        caseId: filter.caseId || undefined,
-        shopId: filter.shopId || undefined,
-      },
+  private async assertCase(caseId: string) {
+    const vc = await this.prisma.vehicleCase.findUnique({
+      where: { id: caseId },
+      include: { vehicle: { select: { shopId: true, plate: true } } },
+    });
+    if (!vc) throw new NotFoundException('Case not found');
+    return vc;
+  }
+
+  findMany(caseId: string) {
+    return this.prisma.casePhoto.findMany({
+      where: { caseId },
       orderBy: { takenAt: 'desc' },
     });
   }
 
-  async create(dto: CreatePhotoDto, userId: string) {
-    const caseRecord = dto.caseId
-      ? await this.prisma.vehicleCase.findUnique({
-          where: { id: dto.caseId },
-          include: { vehicle: true },
-        })
-      : null;
-    if (dto.caseId && !caseRecord) {
-      throw new NotFoundException('Case not found');
-    }
-    const resolvedShopId = dto.shopId || caseRecord?.vehicle.shopId;
-    if (!resolvedShopId) {
-      throw new BadRequestException('shopId is required');
-    }
-    const photo = await this.prisma.photo.create({
+  async createFromFile(caseId: string, userId: string, url: string, storagePath: string) {
+    const vc = await this.assertCase(caseId);
+    const photo = await this.prisma.casePhoto.create({
       data: {
-        shopId: resolvedShopId,
-        caseId: caseRecord?.id ?? undefined,
-        url: dto.url ?? '',
-        storagePath: dto.storagePath ?? '',
-        takenAt: dto.takenAt ? new Date(dto.takenAt) : undefined,
-        addedBy: userId,
-      },
-    });
-    const ref = caseRecord?.vehicleId || caseRecord?.id || 'none';
-    await this.activitiesService.log(userId, resolvedShopId || null, 'Photo uploaded', ref, 'photo');
-    return photo;
-  }
-
-  async createFromFile(dto: CreatePhotoDto, userId: string, url: string, storagePath: string) {
-    const caseRecord = dto.caseId
-      ? await this.prisma.vehicleCase.findUnique({
-          where: { id: dto.caseId },
-          include: { vehicle: true },
-        })
-      : null;
-    if (dto.caseId && !caseRecord) {
-      throw new NotFoundException('Case not found');
-    }
-    const resolvedShopId = dto.shopId || caseRecord?.vehicle.shopId;
-    if (!resolvedShopId) {
-      throw new BadRequestException('shopId is required');
-    }
-    const photo = await this.prisma.photo.create({
-      data: {
-        shopId: resolvedShopId,
-        caseId: caseRecord?.id ?? undefined,
+        caseId,
         url,
         storagePath,
-        takenAt: dto.takenAt ? new Date(dto.takenAt) : undefined,
+        takenAt: new Date(),
         addedBy: userId,
       },
     });
-    const ref = caseRecord?.vehicleId || caseRecord?.id || 'none';
-    await this.activitiesService.log(userId, resolvedShopId || null, 'Photo uploaded', ref, 'photo');
+    await this.activitiesService.create({
+      scope: 'vehicle_case',
+      refId: caseId,
+      message: 'Fotoğraf yüklendi',
+      payload: { photoId: photo.id, caseId, plate: vc.vehicle.plate },
+      type: 'photo_uploaded',
+      actorId: userId,
+      shopId: vc.vehicle.shopId,
+    });
     return photo;
   }
 
   async remove(id: string, userId: string) {
-    const exists = await this.prisma.photo.findFirst({ where: { id, deletedAt: null } });
+    const exists = await this.prisma.casePhoto.findUnique({ where: { id } });
     if (!exists) {
       throw new NotFoundException('Photo not found');
     }
-    await this.prisma.photo.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
+    await this.prisma.casePhoto.delete({ where: { id } });
     if (exists.storagePath) {
       try {
         await fs.promises.unlink(exists.storagePath);
@@ -96,11 +59,15 @@ export class PhotosService {
         // ignore missing file
       }
     }
-    const caseRecord = exists.caseId
-      ? await this.prisma.vehicleCase.findUnique({ where: { id: exists.caseId } })
-      : null;
-    const ref = caseRecord?.vehicleId || exists.caseId || undefined;
-    await this.activitiesService.log(userId, exists.shopId, 'Photo deleted', ref ?? 'none', 'photo');
+    await this.activitiesService.create({
+      scope: 'vehicle_case',
+      refId: exists.caseId,
+      message: 'Fotoğraf silindi',
+      payload: { photoId: exists.id, caseId: exists.caseId },
+      type: 'photo_deleted',
+      actorId: userId,
+      shopId: null,
+    });
     return { success: true };
   }
 }

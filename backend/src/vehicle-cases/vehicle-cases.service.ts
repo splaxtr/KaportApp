@@ -47,6 +47,7 @@ export class VehicleCasesService {
           phone: dto.phone,
           tcVkn: dto.tcVkn,
           notes: dto.notes,
+          status: dto.status as any,
         },
       });
       if (dto.ownerId) {
@@ -79,6 +80,7 @@ export class VehicleCasesService {
           phone: dto.phone ?? undefined,
           tcVkn: dto.tcVkn ?? undefined,
           notes: dto.notes ?? undefined,
+          status: dto.status as any,
         },
       });
       if (dto.ownerId) {

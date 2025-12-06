@@ -30,6 +30,7 @@ export function PartsTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", statusKey: "pending", quantity: 1, position: "" });
   const [bulkText, setBulkText] = useState("");
+  const [bulkStatus, setBulkStatus] = useState("pending");
 
   const handleDelete = async (id: string) => {
     setBusy(id);
@@ -103,14 +104,34 @@ export function PartsTab({
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <Label>Parçalar (her satırda bir, çoklu için “*adet” yazın)</Label>
-                <Textarea
-                  placeholder={`Sağ çamurluk farı\nTekerlek *4`}
-                  value={bulkText}
-                  onChange={(e) => setBulkText(e.target.value)}
-                  rows={6}
-                />
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label>Durum (toplu ekleme için)</Label>
+                  <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Bekliyor</SelectItem>
+                      <SelectItem value="ordered">Sipariş Verildi</SelectItem>
+                      <SelectItem value="shipping">Yolda</SelectItem>
+                      <SelectItem value="arrived">Geldi</SelectItem>
+                      <SelectItem value="installed">Takıldı</SelectItem>
+                      <SelectItem value="repair_pending">Tamir Edilecek</SelectItem>
+                      <SelectItem value="repair_sent">Tamire Gönderildi</SelectItem>
+                      <SelectItem value="repaired">Tamir Edildi</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Parçalar (her satırda bir, çoklu için “*adet” yazın)</Label>
+                  <Textarea
+                    placeholder={`Sağ çamurluk farı\nTekerlek *4`}
+                    value={bulkText}
+                    onChange={(e) => setBulkText(e.target.value)}
+                    rows={6}
+                  />
+                </div>
               </div>
             )}
             <DialogFooter>
@@ -134,7 +155,7 @@ export function PartsTab({
                         const match = line.match(/^(.*?)(?:\s*\*\s*(\d+))?$/i);
                         const name = (match?.[1] || "").trim();
                         const qty = match?.[2] ? Number(match[2]) : 1;
-                        return { name, quantity: qty, statusKey: "pending" };
+                        return { name, quantity: qty, statusKey: bulkStatus };
                       });
                       for (const p of payloads) {
                         if (p.name) {

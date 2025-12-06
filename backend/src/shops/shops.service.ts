@@ -69,6 +69,14 @@ export class ShopsService {
     return this.prisma.user.update({ where: { id: userId }, data: { shopId: id } });
   }
 
+  async listEmployees(id: string) {
+    await this.ensureExists(id);
+    return this.prisma.user.findMany({
+      where: { shopId: id },
+      select: { id: true, name: true, email: true, role: true, shopId: true },
+    });
+  }
+
   async removeEmployee(id: string, userId: string) {
     await this.ensureExists(id);
     return this.prisma.user.update({ where: { id: userId }, data: { shopId: null } });
