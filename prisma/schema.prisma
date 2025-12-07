@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RoleKey {
+  system_admin
+  admin
+  employee
+}
+
+enum VehicleFileStatus {
+  open
+  pending
+  completed
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+  fullName     String
+  email        String    @unique
+  passwordHash String
+  phone        String?
+
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id])
+
+  permissions   UserPermission[]
+  customerNotes CustomerNote[]
+  photos        Photo[]
+}
+
+model Role {
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  key         RoleKey   @unique
+  name        String
+  description String?
+  isSystem    Boolean   @default(false)
+
+  users       User[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  key         String    @unique
+  description String?
+
+  roles RolePermission[]
+  users UserPermission[]
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserPermission {
+  userId       Int
+  permissionId Int
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+}
+
+model Customer {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  fullName  String
+  email     String?
+  tcVkn     String?
+
+  phones     CustomerPhone[]
+  addresses  CustomerAddress[]
+  notes      CustomerNote[]
+  files      VehicleFile[]
+
+  @@index([fullName])
+  @@index([deletedAt])
+  @@index([tcVkn])
+}
+
+model CustomerPhone {
+  id         Int       @id @default(autoincrement())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  label      String?
+  phone      String
+  customerId Int
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([phone])
+  @@index([customerId])
+}
+
+model CustomerAddress {
+  id         Int       @id @default(autoincrement())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  label      String?
+  address    String
+  city       String?
+  district   String?
+  postalCode String?
+  customerId Int
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+}
+
+model CustomerNote {
+  id         Int       @id @default(autoincrement())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  note       String
+  customerId Int
+  authorId   Int?
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  author   User?    @relation(fields: [authorId], references: [id])
+
+  @@index([customerId])
+  @@index([authorId])
+}
+
+model Vehicle {
+  id              Int       @id @default(autoincrement())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  plate           String
+  plateNormalized String    @unique
+  firstVisitAt    DateTime?
+  lastVisitAt     DateTime?
+  visitCount      Int       @default(0)
+
+  files VehicleFile[]
+
+  @@index([plate])
+  @@index([deletedAt])
+}
+
+model VehicleFile {
+  id           Int               @id @default(autoincrement())
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  deletedAt    DateTime?
+  vehicleId    Int
+  customerId   Int
+  expertId     Int?
+  status       VehicleFileStatus @default(open)
+  brandModel   String
+  color        String
+  accidentDate DateTime?
+  fileNumber   String?
+  quickNote    String?
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+  expert   Expert? @relation(fields: [expertId], references: [id], onDelete: SetNull)
+
+  parts        Part[]
+  operations   Operation[]
+  photos       Photo[]
+  reviewTokens ReviewToken[]
+
+  @@index([vehicleId])
+  @@index([customerId])
+  @@index([expertId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model PartStatus {
+  id         Int       @id @default(autoincrement())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  label      String
+  color      String?
+  sortOrder  Int       @default(0)
+  parts      Part[]
+
+  @@unique([label])
+}
+
+model Part {
+  id            Int       @id @default(autoincrement())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  name          String
+  description   String?
+  quantity      Int       @default(1)
+  vehicleFileId Int
+  statusId      Int
+
+  vehicleFile VehicleFile @relation(fields: [vehicleFileId], references: [id])
+  status      PartStatus  @relation(fields: [statusId], references: [id])
+
+  @@index([vehicleFileId])
+  @@index([statusId])
+  @@index([deletedAt])
+}
+
+model OperationStatus {
+  id         Int       @id @default(autoincrement())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  label      String
+  color      String?
+  sortOrder  Int       @default(0)
+  operations Operation[]
+
+  @@unique([label])
+}
+
+model Operation {
+  id            Int       @id @default(autoincrement())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  title         String
+  description   String?
+  vehicleFileId Int
+  statusId      Int
+
+  vehicleFile VehicleFile    @relation(fields: [vehicleFileId], references: [id])
+  status      OperationStatus @relation(fields: [statusId], references: [id])
+
+  @@index([vehicleFileId])
+  @@index([statusId])
+  @@index([deletedAt])
+}
+
+model Photo {
+  id            Int       @id @default(autoincrement())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  url           String
+  title         String?
+  note          String?
+  vehicleFileId Int
+  uploadedById  Int?
+
+  vehicleFile VehicleFile @relation(fields: [vehicleFileId], references: [id])
+  uploadedBy  User?       @relation(fields: [uploadedById], references: [id])
+
+  @@index([vehicleFileId])
+  @@index([uploadedById])
+  @@index([deletedAt])
+}
+
+model Expert {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  fullName  String
+  phone     String?
+  email     String?
+  company   String?
+  note      String?
+
+  files VehicleFile[]
+
+  @@index([deletedAt])
+}
+
+model ReviewToken {
+  id            Int       @id @default(autoincrement())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  token         String    @unique
+  vehicleFileId Int
+  expiresAt     DateTime?
+  revokedAt     DateTime?
+
+  vehicleFile VehicleFile @relation(fields: [vehicleFileId], references: [id])
+  accessKeys ReviewAccessKey[]
+
+  @@index([vehicleFileId])
+  @@index([revokedAt])
+}
+
+model ReviewAccessKey {
+  id         Int       @id @default(autoincrement())
+  createdAt  DateTime  @default(now())
+  usedAt     DateTime?
+  key        String
+  tokenId    Int
+
+  token ReviewToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@index([tokenId])
+  @@index([usedAt])
+}

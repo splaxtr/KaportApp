@@ -1,0 +1,191 @@
+import { NextRequest } from "next/server";
+
+import { prisma } from "@/lib/prisma";
+import { badRequest, json, notFound, serverError } from "@/lib/http";
+
+type Params = { params: Promise<{ id: string }> };
+
+type CustomerUpdatePayload = {
+  fullName?: string;
+  email?: string | null;
+  tcVkn?: string | null;
+  phones?: { label?: string | null; phone: string }[];
+  addresses?: {
+    label?: string | null;
+    address: string;
+    city?: string | null;
+    district?: string | null;
+    postalCode?: string | null;
+  }[];
+};
+
+function parseId(id: string) {
+  const parsed = Number(id);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export async function GET(_req: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params;
+    const customerId = parseId(id);
+    if (!customerId) return badRequest("Geçersiz müşteri id");
+
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId, deletedAt: null },
+      include: {
+        phones: { where: { deletedAt: null } },
+        addresses: { where: { deletedAt: null } },
+        notes: {
+          where: { deletedAt: null },
+          include: { author: true },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    if (!customer) return notFound();
+
+    return json({
+      id: customer.id,
+      fullName: customer.fullName,
+      email: customer.email,
+      phones: customer.phones,
+      addresses: customer.addresses,
+      notes: customer.notes.map((n) => ({
+        id: n.id,
+        note: n.note,
+        author: n.author ? { id: n.author.id, fullName: n.author.fullName, email: n.author.email } : null,
+        createdAt: n.createdAt,
+      })),
+      createdAt: customer.createdAt,
+    });
+  } catch (error) {
+    console.error(error);
+    return serverError();
+  }
+}
+
+export async function PATCH(req: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params;
+    const customerId = parseId(id);
+    if (!customerId) return badRequest("Geçersiz müşteri id");
+
+    const existing = await prisma.customer.findFirst({ where: { id: customerId, deletedAt: null } });
+    if (!existing) return notFound();
+
+    const body = (await req.json()) as CustomerUpdatePayload;
+    const data: { fullName?: string; email?: string | null } = {};
+
+  if (typeof body.fullName === "string") data.fullName = body.fullName.trim();
+  if (body.email !== undefined) {
+    if (typeof body.email === "string" && body.email.trim().length > 0) {
+      data.email = body.email.trim().toLowerCase();
+    } else {
+      data.email = null;
+    }
+  }
+  if (body.tcVkn !== undefined) {
+    if (typeof body.tcVkn === "string" && body.tcVkn.trim().length > 0) {
+      data.tcVkn = body.tcVkn.trim();
+    } else {
+      data.tcVkn = null;
+    }
+  }
+
+    const phones =
+      Array.isArray(body?.phones) && body.phones.length > 0
+        ? body.phones.map((p) => ({
+            label: p.label ?? null,
+            phone: p.phone.trim(),
+          }))
+        : null;
+
+    const addresses =
+      Array.isArray(body?.addresses) && body.addresses.length > 0
+        ? body.addresses.map((a) => ({
+            label: a.label ?? null,
+            address: a.address.trim(),
+            city: a.city ?? null,
+            district: a.district ?? null,
+            postalCode: a.postalCode ?? null,
+          }))
+        : null;
+
+    // Replace phones/addresses if provided: soft delete existing then add new.
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.customer.update({
+        where: { id: customerId },
+        data,
+      });
+
+      if (phones) {
+        await tx.customerPhone.updateMany({
+          where: { customerId, deletedAt: null },
+          data: { deletedAt: new Date() },
+        });
+        if (phones.length) {
+          await tx.customerPhone.createMany({
+            data: phones.map((p) => ({ ...p, customerId })),
+          });
+        }
+      }
+
+      if (addresses) {
+        await tx.customerAddress.updateMany({
+          where: { customerId, deletedAt: null },
+          data: { deletedAt: new Date() },
+        });
+        if (addresses.length) {
+          await tx.customerAddress.createMany({
+            data: addresses.map((a) => ({ ...a, customerId })),
+          });
+        }
+      }
+
+      return updated;
+    });
+
+    const refreshed = await prisma.customer.findUnique({
+      where: { id: result.id },
+      include: {
+        phones: { where: { deletedAt: null } },
+        addresses: { where: { deletedAt: null } },
+      },
+    });
+
+    return json({
+      id: refreshed?.id,
+      fullName: refreshed?.fullName,
+      email: refreshed?.email,
+      phones: refreshed?.phones ?? [],
+      addresses: refreshed?.addresses ?? [],
+    });
+  } catch (error) {
+    console.error(error);
+    return serverError();
+  }
+}
+
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params;
+    const customerId = parseId(id);
+    if (!customerId) return badRequest("Geçersiz müşteri id");
+
+    const existing = await prisma.customer.findFirst({ where: { id: customerId, deletedAt: null } });
+    if (!existing) return notFound();
+
+    await prisma.$transaction([
+      prisma.customer.update({ where: { id: customerId }, data: { deletedAt: new Date() } }),
+      prisma.customerPhone.updateMany({ where: { customerId, deletedAt: null }, data: { deletedAt: new Date() } }),
+      prisma.customerAddress.updateMany({ where: { customerId, deletedAt: null }, data: { deletedAt: new Date() } }),
+      prisma.customerNote.updateMany({ where: { customerId, deletedAt: null }, data: { deletedAt: new Date() } }),
+    ]);
+
+    return json({ ok: true });
+  } catch (error) {
+    console.error(error);
+    return serverError();
+  }
+}

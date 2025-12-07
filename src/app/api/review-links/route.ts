@@ -1,0 +1,95 @@
+import { randomBytes } from "crypto";
+import { NextRequest } from "next/server";
+
+import { prisma } from "@/lib/prisma";
+import { badRequest, json, serverError } from "@/lib/http";
+
+function createToken() {
+  return `rvw-${randomBytes(6).toString("hex")}`;
+}
+
+function createKey() {
+  return randomBytes(4).toString("hex");
+}
+
+function statusFrom(exp: Date | null, revokedAt: Date | null) {
+  if (revokedAt) return "revoked";
+  if (exp && exp.getTime() < Date.now()) return "expired";
+  return "active";
+}
+
+export async function GET() {
+  try {
+    const tokens = await prisma.reviewToken.findMany({
+      where: { deletedAt: null },
+      include: {
+        vehicleFile: { include: { vehicle: true } },
+        accessKeys: { where: { usedAt: null } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return json(
+      tokens.map((t) => ({
+        id: t.id,
+        token: t.token,
+        plate: t.vehicleFile.vehicle.plate,
+        fileId: t.vehicleFileId,
+        status: statusFrom(t.expiresAt, t.revokedAt),
+        expiresAt: t.expiresAt,
+        createdAt: t.createdAt,
+        keys: t.accessKeys.map((k) => k.key),
+      })),
+    );
+  } catch (error) {
+    console.error(error);
+    return serverError();
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const fileId = typeof body?.fileId === "number" ? body.fileId : Number(body?.fileId);
+    const expiresAt = body?.expiresAt ? new Date(body.expiresAt) : null;
+
+    if (!fileId || Number.isNaN(fileId)) return badRequest("fileId gereklidir.");
+
+    const file = await prisma.vehicleFile.findFirst({
+      where: { id: fileId, deletedAt: null },
+      include: { vehicle: true },
+    });
+    if (!file) return badRequest("Araç dosyası bulunamadı.");
+
+    const token = await prisma.reviewToken.create({
+      data: {
+        token: createToken(),
+        vehicleFileId: fileId,
+        expiresAt: expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt : null,
+      },
+    });
+
+    // üç tek-kullanımlık anahtar oluştur
+    const keys = Array.from({ length: 3 }, () => createKey());
+    await prisma.reviewAccessKey.createMany({
+      data: keys.map((k) => ({ key: k, tokenId: token.id })),
+    });
+
+    return json(
+      {
+        id: token.id,
+        token: token.token,
+        plate: file.vehicle.plate,
+        fileId: fileId,
+        status: statusFrom(token.expiresAt, token.revokedAt),
+        expiresAt: token.expiresAt,
+        createdAt: token.createdAt,
+        keys,
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error(error);
+    return serverError();
+  }
+}
