@@ -90,8 +90,10 @@ export default function FileListClient({ files }: { files: FileRow[] }) {
       {info ? (
         <div className="rounded-md border border-lime-500/40 bg-lime-500/10 px-3 py-2 text-xs text-lime-100">{info}</div>
       ) : null}
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
-        <table className="min-w-full divide-y divide-white/10 text-sm">
+      {/* Masaüstü tablo */}
+      <div className="hidden overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg md:block">
+        <div className="overflow-x-auto">
+          <table className="min-w-[720px] divide-y divide-white/10 text-sm">
           <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
             <tr>
               <th className="px-4 py-3">Araç marka/model</th>
@@ -144,6 +146,59 @@ export default function FileListClient({ files }: { files: FileRow[] }) {
             ))}
           </tbody>
         </table>
+        </div>
+      </div>
+
+      {/* Mobil kart görünümü */}
+      <div className="space-y-3 md:hidden">
+        {files.map((file) => (
+          <div key={file.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Araç dosyası</p>
+                <p className="text-lg font-semibold text-white">{file.brandModel}</p>
+                <p className="text-sm text-slate-300">Sahip: {file.customer.fullName}</p>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[file.status] || "bg-white/10"}`}>
+                {statusLabels[file.status] ?? file.status}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-200">
+              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-slate-400">Dosya no</p>
+                <p>{file.fileNumber ?? "—"}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-slate-400">Kaza tarihi</p>
+                <p>{formatDate(file.accidentDate)}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-200">
+              <Link
+                href={`/vehicles/${encodeURIComponent(normalizePlate(file.plate))}/${file.id}`}
+                className="rounded-lg border border-white/10 px-3 py-1 transition hover:border-lime-300/70 hover:text-white"
+              >
+                Detaylar
+              </Link>
+              <button
+                type="button"
+                onClick={() => onCreateReviewLink(file.id)}
+                disabled={creatingId === file.id}
+                className="rounded-lg border border-white/10 px-3 py-1 transition hover:border-lime-300/70 hover:text-white disabled:opacity-60"
+              >
+                {creatingId === file.id ? "Oluşturuluyor..." : "İnceleme linki"}
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(file.id)}
+                disabled={deletingId === file.id}
+                className="rounded-lg border border-red-500/50 px-3 py-1 text-red-200 transition hover:bg-red-500/10 disabled:opacity-60"
+              >
+                {deletingId === file.id ? "Siliniyor..." : "Sil"}
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {showModal && targetFileId ? (

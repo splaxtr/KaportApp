@@ -112,7 +112,8 @@ export default function OperationStatusClient() {
         </form>
 
         <div className="md:col-span-2 overflow-hidden rounded-xl border border-white/10">
-          <table className="min-w-full divide-y divide-white/10 text-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-[520px] divide-y divide-white/10 text-sm">
             <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
               <tr>
                 <th className="px-4 py-3">Etiket</th>
@@ -153,6 +154,7 @@ export default function OperationStatusClient() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

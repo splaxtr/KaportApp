@@ -620,7 +620,8 @@ export function FileTabs({
           </div>
 
           <div className="overflow-hidden rounded-xl border border-white/10">
-            <table className="min-w-full divide-y divide-white/10 text-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-[700px] divide-y divide-white/10 text-sm">
               <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
                 <tr>
                   <th className="px-4 py-3">
@@ -681,6 +682,7 @@ export function FileTabs({
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}
@@ -806,7 +808,8 @@ export function FileTabs({
           </div>
 
           <div className="overflow-hidden rounded-xl border border-white/10">
-            <table className="min-w-full divide-y divide-white/10 text-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-[700px] divide-y divide-white/10 text-sm">
               <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
                 <tr>
                   <th className="px-4 py-3">
@@ -867,6 +870,7 @@ export function FileTabs({
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

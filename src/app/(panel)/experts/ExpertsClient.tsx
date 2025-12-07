@@ -170,7 +170,8 @@ export default function ExpertsClient() {
       ) : null}
 
       <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
-        <table className="min-w-full divide-y divide-white/10 text-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-[680px] divide-y divide-white/10 text-sm">
           <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
             <tr>
               <th className="px-4 py-3">Ad Soyad</th>
@@ -227,6 +228,7 @@ export default function ExpertsClient() {
           )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showModal ? (

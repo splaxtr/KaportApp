@@ -72,49 +72,6 @@ export default function Home() {
         </section>
       </div>
 
-      <div className="mx-auto max-w-6xl px-6 pb-16 md:px-12">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Garaj</p>
-            <h3 className="text-2xl font-semibold">Aktif araçlar</h3>
-          </div>
-          <button className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-medium text-slate-50 transition hover:-translate-y-0.5 hover:border-lime-300 hover:bg-white/20">
-            Tümünü görüntüle
-          </button>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {vehicles.map((vehicle) => (
-            <div
-              key={vehicle.plate}
-              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg transition hover:-translate-y-1 hover:border-lime-300/70 hover:shadow-[0_20px_60px_rgba(148,163,184,0.25)]"
-            >
-              <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-white/10 via-white/0 to-lime-400/10 opacity-70 transition group-hover:opacity-100" />
-              <div className="relative mb-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Plaka</p>
-                  <p className="text-lg font-semibold">{vehicle.plate}</p>
-                </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold text-slate-950 ${vehicle.statusColor}`}
-                >
-                  {vehicle.status}
-                </span>
-              </div>
-              <div className="relative mb-3 space-y-1">
-                <p className="text-sm text-slate-200">{vehicle.model}</p>
-                <p className="text-xs text-slate-400">{vehicle.color}</p>
-              </div>
-              <div className="relative mb-3 h-2 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-2 rounded-full bg-gradient-to-r from-lime-300 to-green-500"
-                  style={{ width: `${vehicle.progress}%` }}
-                />
-              </div>
-              <p className="text-sm text-slate-200">{vehicle.note}</p>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

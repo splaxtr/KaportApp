@@ -125,7 +125,8 @@ export default function UsersClient() {
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-center text-sm text-slate-300">Yükleniyor...</div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
-          <table className="min-w-full divide-y divide-white/10 text-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-[720px] divide-y divide-white/10 text-sm">
             <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
               <tr>
                 <th className="px-4 py-3">Ad Soyad</th>
@@ -174,6 +175,7 @@ export default function UsersClient() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

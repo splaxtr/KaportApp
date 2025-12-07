@@ -134,7 +134,8 @@ export default function TrashClient() {
               <span>{group}</span>
               <span className="text-slate-400">{list.length} kayıt</span>
             </div>
-            <table className="min-w-full divide-y divide-white/10 text-sm">
+            <div className="overflow-x-auto">
+            <table className="min-w-[640px] divide-y divide-white/10 text-sm">
               <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
                 <tr>
                   <th className="px-4 py-3">Ad</th>
@@ -173,6 +174,7 @@ export default function TrashClient() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         ))
       )}
