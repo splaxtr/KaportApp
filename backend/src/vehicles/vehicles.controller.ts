@@ -14,8 +14,20 @@ export class VehiclesController {
 
   @Get()
   @Roles('admin', 'owner', 'employee')
-  findAll(@Query('plate') plate?: string) {
-    return this.vehiclesService.findAll({ plate });
+  findAll(
+    @Query('plate') plate?: string,
+    @Query('brand') brand?: string,
+    @Query('model') model?: string,
+    @Query('year') year?: string,
+    @Query('shopId') shopId?: string,
+  ) {
+    return this.vehiclesService.findAll({
+      plate,
+      brand,
+      model,
+      year: year ? Number(year) : undefined,
+      shopId,
+    });
   }
 
   @Get(':id')

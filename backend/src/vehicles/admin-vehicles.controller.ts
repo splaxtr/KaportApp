@@ -11,8 +11,20 @@ export class AdminVehiclesController {
   constructor(private readonly vehiclesService: VehiclesService) {}
 
   @Get()
-  findAll(@Query('plate') plate?: string) {
-    return this.vehiclesService.findAll({ plate });
+  findAll(
+    @Query('plate') plate?: string,
+    @Query('brand') brand?: string,
+    @Query('model') model?: string,
+    @Query('year') year?: string,
+    @Query('shopId') shopId?: string,
+  ) {
+    return this.vehiclesService.findAll({
+      plate,
+      brand,
+      model,
+      year: year ? Number(year) : undefined,
+      shopId,
+    });
   }
 
   @Get(':id')

@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { format } from "date-fns";
-import tr from "date-fns/locale/tr";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +21,8 @@ const STATUS_COLORS: Record<string, string> = {
 function formatDate(value?: string | null) {
   if (!value) return "—";
   const d = new Date(value);
-  return format(d, "dd.MM.yyyy", { locale: tr });
+  if (isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("tr-TR").format(d);
 }
 
 type SortKey = "plate" | "createdAt";

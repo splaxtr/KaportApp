@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { VehicleFilters } from "./vehicle-filters";
 import { VehicleTable } from "./vehicle-table";
 import { VehicleListItem, VehicleListParams, getAdminVehicles } from "@/lib/api/admin/vehicles";
+import { CreateVehicleDialog } from "./create-vehicle-dialog";
 
 export default function VehiclePageClient({ token, initialData }: { token: string; initialData: VehicleListItem[] }) {
   const router = useRouter();
@@ -24,7 +25,10 @@ export default function VehiclePageClient({ token, initialData }: { token: strin
 
   return (
     <div className="space-y-3">
-      <VehicleFilters onApply={applyFilters} onReset={reset} />
+      <div className="flex items-center justify-between gap-3">
+        <VehicleFilters onApply={applyFilters} onReset={reset} />
+        <CreateVehicleDialog token={token} onCreated={reset} />
+      </div>
       <VehicleTable initialData={data} />
     </div>
   );

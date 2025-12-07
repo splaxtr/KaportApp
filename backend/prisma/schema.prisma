@@ -21,6 +21,7 @@ model User {
   activities         Activity[]
   ownedShops         Shop[]     @relation("ShopOwner")
   shop               Shop?      @relation("ShopUsers", fields: [shopId], references: [id])
+  vehiclesCreated    Vehicle[]  @relation("VehicleCreator")
 }
 
 model Shop {
@@ -31,13 +32,15 @@ model Shop {
   updatedAt      DateTime             @updatedAt
   deletedAt      DateTime?
   customVehicles CustomVehicleEntry[]
+  vehicles       Vehicle[]
   owner          User                 @relation("ShopOwner", fields: [ownerId], references: [id])
   users          User[]               @relation("ShopUsers")
 }
 
 model Vehicle {
   id             String        @id @default(uuid())
-  plate          String        @unique
+  shopId         String
+  plate          String
   brand          String?
   model          String?
   year           Int?
@@ -46,6 +49,11 @@ model Vehicle {
   createdAt      DateTime      @default(now())
 
   cases          VehicleCase[]
+  shop           Shop          @relation(fields: [shopId], references: [id])
+  currentOwner   Customer?     @relation("VehicleOwner", fields: [currentOwnerId], references: [id])
+  creator        User?         @relation("VehicleCreator", fields: [createdBy], references: [id])
+
+  @@unique([shopId, plate])
 }
 
 model VehicleCase {
@@ -63,6 +71,7 @@ model VehicleCase {
   createdAt  DateTime      @default(now())
 
   vehicle    Vehicle       @relation(fields: [vehicleId], references: [id])
+  owner      Customer?     @relation("VehicleCaseOwner", fields: [ownerId], references: [id])
   photos     CasePhoto[]
   parts      CasePart[]
   operations CaseOperation[]
@@ -89,6 +98,8 @@ model Customer {
   phone           String?
   email           String?
   createdAt       DateTime              @default(now())
+  vehicles        Vehicle[]             @relation("VehicleOwner")
+  cases           VehicleCase[]         @relation("VehicleCaseOwner")
 }
 
 model SystemConfig {

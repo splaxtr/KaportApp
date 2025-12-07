@@ -12,7 +12,7 @@ export class CasesService {
   async findCase(caseId: string) {
     const caseItem = await this.prisma.vehicleCase.findUnique({
       where: { id: caseId },
-      include: { vehicle: true },
+      include: { vehicle: true, owner: true },
     });
     if (!caseItem) throw new NotFoundException('Case not found');
     return caseItem;
@@ -82,6 +82,7 @@ export class CasesService {
     return this.prisma.vehicleCase.findMany({
       where: { vehicleId },
       orderBy: { createdAt: 'desc' },
+      include: { owner: true },
     });
   }
 

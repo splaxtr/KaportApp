@@ -18,7 +18,7 @@ export function VehicleFilters({ onApply, onReset }: Props) {
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
-  const [shopId, setShopId] = useState("");
+  const [shopId, setShopId] = useState("all");
 
   const handleApply = () => {
     const filters: VehicleListParams = {
@@ -26,7 +26,7 @@ export function VehicleFilters({ onApply, onReset }: Props) {
       brand: brand || undefined,
       model: model || undefined,
       year: year ? Number(year) : undefined,
-      shopId: shopId || undefined,
+      shopId: shopId === "all" ? undefined : shopId,
     };
     onApply(filters);
   };
@@ -36,12 +36,12 @@ export function VehicleFilters({ onApply, onReset }: Props) {
     setBrand("");
     setModel("");
     setYear("");
-    setShopId("");
+    setShopId("all");
     onReset();
   };
 
   return (
-    <Card className="border border-border bg-card p-4">
+    <Card className="border border-border bg-card p-4 w-full">
       <div className="grid gap-3 md:grid-cols-5">
         <div className="space-y-1">
           <Label>Plaka</Label>
@@ -66,7 +66,7 @@ export function VehicleFilters({ onApply, onReset }: Props) {
               <SelectValue placeholder="Tümü" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tümü</SelectItem>
+              <SelectItem value="all">Tümü</SelectItem>
               <SelectItem value="demo-shop-id">Demo Shop</SelectItem>
             </SelectContent>
           </Select>

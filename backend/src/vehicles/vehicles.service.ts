@@ -10,18 +10,28 @@ export class VehiclesService {
     private readonly activitiesService: ActivitiesService,
   ) {}
 
-  findAll(filters: { plate?: string } = {}) {
-    return this.prisma.vehicle.findMany({
+  async findAll(filters: {
+    plate?: string;
+    brand?: string;
+    model?: string;
+    year?: number;
+    shopId?: string;
+  } = {}) {
+    const vehicles = await this.prisma.vehicle.findMany({
       where: {
         plate: filters.plate ? { contains: filters.plate, mode: 'insensitive' } : undefined,
+        brand: filters.brand ? { contains: filters.brand, mode: 'insensitive' } : undefined,
+        model: filters.model ? { contains: filters.model, mode: 'insensitive' } : undefined,
+        year: filters.year ?? undefined,
+        shopId: filters.shopId ?? undefined,
       },
       include: {
+        shop: { select: { id: true, name: true } },
         cases: {
           orderBy: { createdAt: 'desc' },
           take: 1,
           select: {
             id: true,
-            caseNumber: true,
             damageDate: true,
             status: true,
             createdAt: true,
@@ -30,12 +40,34 @@ export class VehiclesService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return vehicles.map((v) => {
+      const last = v.cases?.[0];
+      return {
+        id: v.id,
+        plate: v.plate,
+        brand: v.brand,
+        model: v.model,
+        year: v.year,
+        createdAt: v.createdAt,
+        shop: v.shop,
+        lastCase: last
+          ? {
+              id: last.id,
+              damageDate: last.damageDate,
+              status: last.status,
+              createdAt: last.createdAt,
+            }
+          : null,
+      };
+    });
   }
 
   async findOne(id: string) {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id },
       include: {
+        shop: { select: { id: true, name: true } },
         cases: {
           orderBy: { createdAt: 'desc' },
           select: {
@@ -44,6 +76,8 @@ export class VehiclesService {
             damageDate: true,
             status: true,
             createdAt: true,
+            closedAt: true,
+            owner: { select: { id: true, name: true } },
           },
         },
       },
@@ -65,7 +99,8 @@ export class VehiclesService {
         damageDate: true,
         status: true,
         createdAt: true,
-        ownerId: true,
+        closedAt: true,
+        owner: { select: { id: true, name: true } },
       },
     });
   }
@@ -76,7 +111,7 @@ export class VehiclesService {
       dto.damageDate && !isNaN(new Date(dto.damageDate).getTime()) ? new Date(dto.damageDate) : null;
 
     const existing = await this.prisma.vehicle.findUnique({
-      where: { plate: normalizedPlate },
+      where: { shopId_plate: { shopId: dto.shopId, plate: normalizedPlate } },
     });
 
     if (existing) {
@@ -93,19 +128,21 @@ export class VehiclesService {
         },
       });
 
-      await this.activitiesService.create(
-        { message: 'New case created for existing vehicle', plate: existing.plate, caseId: newCase.id },
-        creatorId,
-        'vehicle_case',
-        newCase.id,
-        'case_created',
-      );
+      await this.activitiesService.create({
+        scope: 'vehicle_case',
+        refId: newCase.id,
+        type: 'case_created',
+        payload: { action: 'case_created', plate: existing.plate, caseId: newCase.id, vehicleId: existing.id },
+        actorId: creatorId,
+        shopId: existing.shopId,
+      });
 
       return { vehicle: existing, case: newCase };
     }
 
     const vehicle = await this.prisma.vehicle.create({
       data: {
+        shopId: dto.shopId,
         plate: normalizedPlate,
         brand: dto.brand || null,
         model: dto.model || null,
@@ -128,13 +165,19 @@ export class VehiclesService {
       },
     });
 
-    await this.activitiesService.create(
-      { message: 'Vehicle created with first case', plate: normalizedPlate, caseId: newCase.id },
-      creatorId,
-      'vehicle_case',
-      newCase.id,
-      'vehicle_created',
-    );
+    await this.activitiesService.create({
+      scope: 'vehicle_case',
+      refId: newCase.id,
+      type: 'vehicle_created',
+      payload: {
+        action: 'vehicle_created',
+        plate: normalizedPlate,
+        caseId: newCase.id,
+        vehicleId: vehicle.id,
+      },
+      actorId: creatorId,
+      shopId: dto.shopId,
+    });
 
     return { vehicle, case: newCase };
   }

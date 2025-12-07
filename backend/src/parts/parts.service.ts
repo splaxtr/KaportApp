@@ -35,8 +35,7 @@ export class PartsService {
     await this.activitiesService.create({
       scope: 'vehicle_case',
       refId: caseId,
-      message: `Parça eklendi: ${part.name}`,
-      payload: { partId: part.id, caseId, plate: vc.vehicle.plate },
+      payload: { partId: part.id, caseId, plate: vc.vehicle.plate, action: 'part_created', name: part.name },
       type: 'part_created',
       actorId: userId,
       shopId: vc.vehicle.shopId,
@@ -47,6 +46,7 @@ export class PartsService {
   async update(id: string, dto: UpdatePartDto, userId: string) {
     const exists = await this.prisma.casePart.findUnique({ where: { id } });
     if (!exists) throw new NotFoundException('Part not found');
+    const vc = await this.assertCase(exists.caseId);
     const updated = await this.prisma.casePart.update({
       where: { id },
       data: {
@@ -58,11 +58,10 @@ export class PartsService {
     await this.activitiesService.create({
       scope: 'vehicle_case',
       refId: updated.caseId,
-      message: `Parça güncellendi: ${updated.name}`,
-      payload: { partId: updated.id, caseId: updated.caseId },
+      payload: { partId: updated.id, caseId: updated.caseId, action: 'part_updated', name: updated.name },
       type: 'part_updated',
       actorId: userId,
-      shopId: null,
+      shopId: vc.vehicle.shopId,
     });
     return updated;
   }
@@ -74,8 +73,7 @@ export class PartsService {
     await this.activitiesService.create({
       scope: 'vehicle_case',
       refId: exists.caseId,
-      message: `Parça silindi: ${exists.name}`,
-      payload: { partId: exists.id, caseId: exists.caseId },
+      payload: { partId: exists.id, caseId: exists.caseId, action: 'part_deleted', name: exists.name },
       type: 'part_deleted',
       actorId: userId,
       shopId: null,

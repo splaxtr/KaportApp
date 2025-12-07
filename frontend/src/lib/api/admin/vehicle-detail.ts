@@ -55,7 +55,7 @@ async function fetchWithAuth<T>(path: string, token: string, opts: RequestInit =
 }
 
 export function getAdminVehicleDetail(id: string, token: string) {
-  return fetchWithAuth<VehicleDetail>(`/admin/vehicles/${id}`, token);
+  return fetchWithAuth<VehicleDetail>(`/admin/vehicles/${id}`, token, {}, null);
 }
 
 export function createVehicleCase(vehicleId: string, payload: CasePayload, token: string) {

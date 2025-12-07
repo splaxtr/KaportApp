@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ActivitiesService } from '../activities/activities.service';
 import { PrismaService } from '../prisma/prisma.service';
 import * as fs from 'fs';
@@ -37,8 +37,7 @@ export class PhotosService {
     await this.activitiesService.create({
       scope: 'vehicle_case',
       refId: caseId,
-      message: 'Fotoğraf yüklendi',
-      payload: { photoId: photo.id, caseId, plate: vc.vehicle.plate },
+      payload: { photoId: photo.id, caseId, plate: vc.vehicle.plate, action: 'photo_uploaded' },
       type: 'photo_uploaded',
       actorId: userId,
       shopId: vc.vehicle.shopId,
@@ -62,8 +61,7 @@ export class PhotosService {
     await this.activitiesService.create({
       scope: 'vehicle_case',
       refId: exists.caseId,
-      message: 'Fotoğraf silindi',
-      payload: { photoId: exists.id, caseId: exists.caseId },
+      payload: { photoId: exists.id, caseId: exists.caseId, action: 'photo_deleted' },
       type: 'photo_deleted',
       actorId: userId,
       shopId: null,

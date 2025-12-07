@@ -41,3 +41,34 @@ export async function getAdminVehicles(token: string, filters: VehicleListParams
   const qs = params.toString();
   return fetchWithAuth<VehicleListItem[]>(`/admin/vehicles${qs ? `?${qs}` : ""}`, token, []);
 }
+
+export type CreateVehiclePayload = {
+  shopId: string;
+  plate: string;
+  brand?: string;
+  model?: string;
+  year?: number;
+  ownerId: string;
+  caseNumber?: string;
+  damageDate?: string;
+  expertName?: string;
+  phone?: string;
+  tcVkn?: string;
+  notes?: string;
+};
+
+export async function createVehicleAdmin(payload: CreateVehiclePayload, token: string) {
+  const res = await fetch(`${API_BASE}/vehicles`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Request failed: ${res.status}`);
+  }
+  return res.json();
+}
