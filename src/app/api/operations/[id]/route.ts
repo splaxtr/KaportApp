@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!op) return notFound();
 
     const body = await req.json().catch(() => ({}));
-    const data: { title?: string; description?: string | null; statusId?: number | null } = {};
+    const data: { title?: string; description?: string | null; statusId?: number } = {};
 
     if (typeof body?.title === "string" && body.title.trim()) data.title = body.title.trim();
     if (body?.note !== undefined) data.description = typeof body.note === "string" ? body.note.trim() : null;

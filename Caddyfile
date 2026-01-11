@@ -1,0 +1,11 @@
+# Global options. Set your email to get TLS notices from Let's Encrypt.
+# {
+#   email you@example.com
+# }
+
+kucukaga.vurthex.com {
+  encode zstd gzip
+
+  # Forward everything to the Next.js app exposed on host port 3200.
+  reverse_proxy 127.0.0.1:3200
+}

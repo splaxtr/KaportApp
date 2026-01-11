@@ -20,10 +20,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!existing) return notFound();
 
     const body = await req.json().catch(() => ({}));
-    const data: { title?: string | null; note?: string | null; url?: string | null } = {};
+    const data: { title?: string | null; note?: string | null; url?: string } = {};
     if (body?.title !== undefined) data.title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : null;
     if (body?.note !== undefined) data.note = typeof body.note === "string" && body.note.trim() ? body.note.trim() : null;
-    if (body?.url !== undefined) data.url = typeof body.url === "string" && body.url.trim() ? body.url.trim() : null;
+    if (body?.url !== undefined) {
+      const url = typeof body.url === "string" ? body.url.trim() : "";
+      if (!url) return badRequest("Geçersiz url");
+      data.url = url;
+    }
 
     const updated = await prisma.photo.update({
       where: { id: photoId },

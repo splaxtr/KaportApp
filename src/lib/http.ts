@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonValue = string | number | boolean | null | Date | JsonValue[] | { [key: string]: JsonValue };
 
 export function json(data: Record<string, JsonValue> | JsonValue, init?: ResponseInit) {
   return NextResponse.json(data, init);

@@ -52,8 +52,10 @@ export async function POST(req: NextRequest) {
     if (contentType.includes("multipart/form-data")) {
       const form = await req.formData();
       const files = form.getAll("files").length > 0 ? form.getAll("files") : [form.get("file")].filter(Boolean);
-      title = typeof form.get("title") === "string" ? form.get("title")!.trim() || null : null;
-      note = typeof form.get("note") === "string" ? form.get("note")!.trim() || null : null;
+      const rawTitle = form.get("title");
+      const rawNote = form.get("note");
+      title = typeof rawTitle === "string" ? rawTitle.trim() || null : null;
+      note = typeof rawNote === "string" ? rawNote.trim() || null : null;
 
       if (!files || files.length === 0) return badRequest("Fotoğraf dosyası zorunlu.");
       const fileEntries = files.filter((f): f is File => f instanceof File && f.size > 0);

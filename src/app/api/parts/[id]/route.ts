@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!part) return notFound();
 
     const body = await req.json().catch(() => ({}));
-    const data: { name?: string; quantity?: number; statusId?: number | null } = {};
+    const data: { name?: string; quantity?: number; statusId?: number } = {};
 
     if (typeof body?.name === "string" && body.name.trim()) data.name = body.name.trim();
     if (typeof body?.quantity === "number" && body.quantity > 0) data.quantity = body.quantity;

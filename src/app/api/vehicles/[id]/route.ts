@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { normalizePlate } from "@/lib/plate";
 
 type Params = { params: Promise<{ id: string }> };
 

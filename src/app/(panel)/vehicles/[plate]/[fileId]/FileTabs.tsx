@@ -985,7 +985,7 @@ export function FileTabs({
                   type="button"
                   onClick={() => {
                     setShowPhotoModal(false);
-                    setPhotoForm({ url: "", title: "", note: "" });
+                    setPhotoForm({ files: [], title: "", note: "" });
                     setPhotoError(null);
                   }}
                   className="rounded-md border border-white/15 px-3 py-2 text-xs text-slate-200 hover:border-lime-300/70 hover:text-white"

@@ -42,10 +42,10 @@ export default async function DashboardPage() {
   });
 
   const stats = [
-    { label: "Açık dosya", value: openFiles, accent: "from-lime-300 to-green-500" },
-    { label: "Bekleyen parça", value: pendingParts, accent: "from-amber-300 to-orange-500" },
-    { label: "Aktif işlem", value: ongoingOps, accent: "from-sky-300 to-blue-500" },
-    { label: "Teslime hazır", value: readyFiles, accent: "from-emerald-300 to-teal-500" },
+    { label: "Açık dosya", value: openFiles, accent: "from-lime-300 to-green-500", change: "Anlık" },
+    { label: "Bekleyen parça", value: pendingParts, accent: "from-amber-300 to-orange-500", change: "Anlık" },
+    { label: "Aktif işlem", value: ongoingOps, accent: "from-sky-300 to-blue-500", change: "Anlık" },
+    { label: "Teslime hazır", value: readyFiles, accent: "from-emerald-300 to-teal-500", change: "Anlık" },
   ];
 
   return (

@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 type ExpertPayload = {
   fullName?: string;
   phone?: string | null;
@@ -19,7 +19,8 @@ function parseId(id: string) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
-    const expertId = parseId(params.id);
+    const { id } = await params;
+    const expertId = parseId(id);
     if (!expertId) return badRequest("Geçersiz eksper id");
 
     const existing = await prisma.expert.findFirst({ where: { id: expertId, deletedAt: null } });
@@ -42,7 +43,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
-    const expertId = parseId(params.id);
+    const { id } = await params;
+    const expertId = parseId(id);
     if (!expertId) return badRequest("Geçersiz eksper id");
 
     const existing = await prisma.expert.findFirst({ where: { id: expertId, deletedAt: null } });

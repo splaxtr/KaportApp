@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 
-type Params = { params: { id: string; addressId: string } };
+type Params = { params: Promise<{ id: string; addressId: string }> };
 
 function parseId(id: string) {
   const parsed = Number(id);
@@ -12,8 +12,9 @@ function parseId(id: string) {
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
-    const customerId = parseId(params.id);
-    const addressId = parseId(params.addressId);
+    const { id, addressId: addrId } = await params;
+    const customerId = parseId(id);
+    const addressId = parseId(addrId);
     if (!customerId || !addressId) return badRequest("Geçersiz id");
 
     const existing = await prisma.customerAddress.findFirst({
@@ -49,8 +50,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
-    const customerId = parseId(params.id);
-    const addressId = parseId(params.addressId);
+    const { id, addressId: addrId } = await params;
+    const customerId = parseId(id);
+    const addressId = parseId(addrId);
     if (!customerId || !addressId) return badRequest("Geçersiz id");
 
     const existing = await prisma.customerAddress.findFirst({

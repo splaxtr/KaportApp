@@ -1,9 +1,11 @@
 // Client layout for navigation highlighting
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSelectedLayoutSegment } from "next/navigation";
+
+import { logoutAction } from "@/app/actions/logout";
 
 const navItems = [
   { href: "/dashboard", label: "Özet", icon: "🏁" },
@@ -39,6 +41,7 @@ function NavLink({ href, label, icon }: { href: string; label: string; icon: str
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [role, setRole] = useState<string | null>(null);
+  const [loggingOut, startLogout] = useTransition();
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -58,6 +61,42 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     }
   }, [router]);
 
+  const handleLogout = () => {
+    startLogout(async () => {
+      try {
+        await logoutAction();
+      } catch (error) {
+        console.error("Logout failed", error);
+      } finally {
+        setRole(null);
+        router.replace("/");
+        router.refresh();
+      }
+    });
+  };
+
+  const roleLabel =
+    role === "system_admin"
+      ? "Sistem admini"
+      : role === "admin"
+        ? "Yönetici"
+        : role === "employee"
+          ? "Personel"
+          : "Oturum açık";
+
+  const LogoutButton = ({ compact = false }: { compact?: boolean }) => (
+    <button
+      type="button"
+      onClick={handleLogout}
+      disabled={loggingOut}
+      className={`rounded-lg border border-white/15 bg-white/10 text-xs font-semibold text-slate-50 transition hover:border-lime-300/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-70 ${
+        compact ? "px-3 py-2" : "px-4 py-2"
+      }`}
+    >
+      {loggingOut ? "Çıkış yapılıyor..." : "Çıkış yap"}
+    </button>
+  );
+
   const visibleNav = role === "employee" ? navItems.filter((item) => item.href !== "/settings") : navItems;
 
   const MobileBottomNav = () => {
@@ -68,6 +107,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         style={{ scrollbarWidth: "none" }}
       >
         <div className="flex min-w-max items-center gap-2">
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex min-w-[70px] flex-col items-center gap-1 rounded-xl bg-white/10 px-2.5 py-1.5 text-slate-50 ring-1 ring-lime-300/50 transition hover:bg-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            <span className="text-base">⏻</span>
+            <span className="text-[10px] leading-none">{loggingOut ? "Çıkılıyor" : "Çıkış"}</span>
+          </button>
           {visibleNav.map((item) => {
             const isActive = item.href === `/${segment ?? ""}` || (item.href === "/dashboard" && segment === null);
             return (
@@ -89,6 +137,18 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     );
   };
 
+  const MobileFloatingLogout = () => (
+    <button
+      type="button"
+      onClick={handleLogout}
+      disabled={loggingOut}
+      className="fixed bottom-20 right-4 z-50 flex items-center gap-2 rounded-full bg-gradient-to-r from-lime-400 to-emerald-400 px-4 py-2 text-xs font-semibold text-slate-950 shadow-[0_10px_40px_rgba(74,222,128,0.45)] transition hover:scale-[1.02] md:hidden disabled:cursor-not-allowed disabled:opacity-75"
+    >
+      <span className="text-base">⏻</span>
+      {loggingOut ? "Çıkış yapılıyor..." : "Çıkış yap"}
+    </button>
+  );
+
   return (
     <>
       <div className="min-h-screen bg-slate-950 text-white">
@@ -108,6 +168,16 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
               ))}
             </nav>
+            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 shadow-inner">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Oturum</p>
+                  <p className="text-sm font-semibold text-white">{roleLabel}</p>
+                  <p className="text-xs text-slate-400">KaportaAPP erişimi</p>
+                </div>
+                <LogoutButton />
+              </div>
+            </div>
           </aside>
 
           <main className="flex-1">
@@ -116,11 +186,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-400">KaportaAPP</p>
                 <h2 className="text-lg font-semibold">Kontrol Paneli</h2>
               </div>
+              <LogoutButton compact />
             </div>
             {children}
           </main>
         </div>
       </div>
+      <MobileFloatingLogout />
       <MobileBottomNav />
     </>
   );

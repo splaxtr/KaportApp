@@ -1,0 +1,26 @@
+services:
+  app:
+    build: .
+    env_file:
+      - .env.docker
+    environment:
+      PORT: 3100
+      HOST: 0.0.0.0
+    ports:
+      - "3200:3100"
+    depends_on:
+      - vurthex-db
+    restart: unless-stopped
+
+  vurthex-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kaportapp_user
+      POSTGRES_PASSWORD: KaportApp_2025!pg
+      POSTGRES_DB: kaportapp_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:

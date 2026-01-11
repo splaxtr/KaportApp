@@ -75,23 +75,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!existing) return notFound();
 
     const body = (await req.json()) as CustomerUpdatePayload;
-    const data: { fullName?: string; email?: string | null } = {};
+    const data: { fullName?: string; email?: string | null; tcVkn?: string | null } = {};
 
-  if (typeof body.fullName === "string") data.fullName = body.fullName.trim();
-  if (body.email !== undefined) {
-    if (typeof body.email === "string" && body.email.trim().length > 0) {
-      data.email = body.email.trim().toLowerCase();
-    } else {
-      data.email = null;
+    if (typeof body.fullName === "string") data.fullName = body.fullName.trim();
+    if (body.email !== undefined) {
+      if (typeof body.email === "string" && body.email.trim().length > 0) {
+        data.email = body.email.trim().toLowerCase();
+      } else {
+        data.email = null;
+      }
     }
-  }
-  if (body.tcVkn !== undefined) {
-    if (typeof body.tcVkn === "string" && body.tcVkn.trim().length > 0) {
-      data.tcVkn = body.tcVkn.trim();
-    } else {
-      data.tcVkn = null;
+    if (body.tcVkn !== undefined) {
+      if (typeof body.tcVkn === "string" && body.tcVkn.trim().length > 0) {
+        data.tcVkn = body.tcVkn.trim();
+      } else {
+        data.tcVkn = null;
+      }
     }
-  }
 
     const phones =
       Array.isArray(body?.phones) && body.phones.length > 0
@@ -155,9 +155,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     });
 
     return json({
-      id: refreshed?.id,
-      fullName: refreshed?.fullName,
-      email: refreshed?.email,
+      id: refreshed?.id ?? null,
+      fullName: refreshed?.fullName ?? null,
+      email: refreshed?.email ?? null,
       phones: refreshed?.phones ?? [],
       addresses: refreshed?.addresses ?? [],
     });

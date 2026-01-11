@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { RoleKey } from "@prisma/client";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 function parseId(id: string) {
   const parsed = Number(id);
@@ -13,7 +13,8 @@ function parseId(id: string) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
-    const userId = parseId(params.id);
+    const { id } = await params;
+    const userId = parseId(id);
     if (!userId) return badRequest("Geçersiz kullanıcı id");
 
     const existing = await prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
@@ -38,7 +39,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
-    const userId = parseId(params.id);
+    const { id } = await params;
+    const userId = parseId(id);
     if (!userId) return badRequest("Geçersiz kullanıcı id");
 
     const existing = await prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
