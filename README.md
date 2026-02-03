@@ -22,6 +22,7 @@ NODE_ENV="development"
 ADMIN_EMAIL="admin@demo.com"
 ADMIN_PASSWORD="Kaportapp@123"
 ADMIN_NAME="Kaportapp Admin"
+JWT_SECRET="EN_AZ_32_KARAKTER_GIZLI"
 ```
 3) Migration + client  
 ```bash
@@ -44,6 +45,7 @@ Uygulama: http://localhost:3000
 docker build -t kaportapp .
 docker run -p 3000:3000 --env-file .env kaportapp
 ```
+Docker compose için örnek ortam dosyası: `.env.docker.example`
 
 ## Kimlik Doğrulama
 - Login sonrası `kaporta_auth` çerezi ile korunur; middleware login olmayanları giriş sayfasına yönlendirir.

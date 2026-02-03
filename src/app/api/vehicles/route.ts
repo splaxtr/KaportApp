@@ -4,12 +4,14 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizePlate } from "@/lib/plate";
 import { badRequest, json, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 type VehiclePayload = {
   plate: string;
 };
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim();
@@ -58,12 +60,12 @@ export async function GET(req: NextRequest) {
       })),
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Vehicle API error", error as Error, { path: "/api/vehicles" });
     return serverError();
   }
-}
+}, { requiredPermissions: ["vehicles.manage"] });
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   try {
     const body = (await req.json()) as VehiclePayload;
     const plate = typeof body?.plate === "string" ? body.plate.trim().toUpperCase() : "";
@@ -92,7 +94,7 @@ export async function POST(req: NextRequest) {
 
     return json(created, { status: 201 });
   } catch (error) {
-    console.error(error);
+    logger.error("Vehicle API error", error as Error, { path: "/api/vehicles" });
     return serverError();
   }
-}
+}, { requiredPermissions: ["vehicles.manage"] });

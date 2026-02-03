@@ -3,6 +3,8 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizePlate } from "@/lib/plate";
 import { badRequest, json, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 type VehicleFilePayload = {
   vehicleId?: number;
@@ -16,7 +18,7 @@ type VehicleFilePayload = {
   expertId?: number | null;
 };
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
@@ -52,12 +54,12 @@ export async function GET(req: NextRequest) {
       })),
     );
   } catch (error) {
-    console.error(error);
+    logger.error("VehicleFile API error", error as Error, { path: "/api/vehicle-files" });
     return serverError();
   }
-}
+}, { requiredPermissions: ["vehicleFiles.manage"] });
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   try {
     const body = (await req.json()) as VehicleFilePayload;
   const vehicleId = typeof body?.vehicleId === "number" ? body.vehicleId : null;
@@ -158,7 +160,7 @@ export async function POST(req: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    console.error(error);
+    logger.error("VehicleFile API error", error as Error, { path: "/api/vehicle-files" });
     return serverError();
   }
-}
+}, { requiredPermissions: ["vehicleFiles.manage"] });

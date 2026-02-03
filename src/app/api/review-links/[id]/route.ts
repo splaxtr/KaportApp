@@ -2,15 +2,18 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
+import { getAuditContext } from "@/lib/audit";
 
-type Params = { params: Promise<{ id: string }> };
+type Params = { id: string };
 
 function parseId(id: string) {
   const parsed = Number(id);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-export async function PATCH(req: NextRequest, { params }: Params) {
+export const PATCH = withAuth<Params>(async (req: NextRequest, { params, user }) => {
   try {
     const { id: rawId } = await params;
     const id = parseId(rawId);
@@ -25,10 +28,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     if (action === "revoke") {
       await prisma.reviewToken.update({ where: { id }, data: { revokedAt: new Date() } });
+      logger.audit("revoke", "review_link", getAuditContext(req, user, { targetId: id }));
     } else if (action === "restore") {
       await prisma.reviewToken.update({ where: { id }, data: { revokedAt: null } });
+      logger.audit("restore", "review_link", getAuditContext(req, user, { targetId: id }));
     } else if (action === "delete") {
       await prisma.reviewToken.update({ where: { id }, data: { deletedAt: new Date() } });
+      logger.audit("delete", "review_link", getAuditContext(req, user, { targetId: id }));
     }
 
     return json({ ok: true });
@@ -36,4 +42,4 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["reviews.manage"] });

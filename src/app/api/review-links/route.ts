@@ -3,13 +3,14 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
 
 function createToken() {
-  return `rvw-${randomBytes(6).toString("hex")}`;
+  return `rvw-${randomBytes(12).toString("hex")}`;
 }
 
 function createKey() {
-  return randomBytes(4).toString("hex");
+  return randomBytes(16).toString("hex");
 }
 
 function statusFrom(exp: Date | null, revokedAt: Date | null) {
@@ -18,7 +19,7 @@ function statusFrom(exp: Date | null, revokedAt: Date | null) {
   return "active";
 }
 
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const tokens = await prisma.reviewToken.findMany({
       where: { deletedAt: null },
@@ -45,9 +46,9 @@ export async function GET() {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["reviews.manage"] });
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   try {
     const body = await req.json().catch(() => ({}));
     const fileId = typeof body?.fileId === "number" ? body.fileId : Number(body?.fileId);
@@ -92,4 +93,4 @@ export async function POST(req: NextRequest) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["reviews.manage"] });

@@ -1,11 +1,11 @@
 // Server Action for login
 "use server";
 
-import { cookies } from "next/headers";
+import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import { setAuthCookie } from "@/lib/auth";
 
 export type LoginResult =
   | { success: true }
@@ -26,6 +26,8 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
     });
 
     if (!user) {
+      // Timing attack önleme - her durumda aynı süre bekle
+      await bcrypt.compare(password, "$2a$12$placeholder.hash.for.timing");
       return { success: false, error: "Geçersiz e-posta veya şifre." };
     }
 
@@ -34,22 +36,20 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
       return { success: false, error: "Geçersiz e-posta veya şifre." };
     }
 
-    // Basit (demo) cookie: gerçek projede HttpOnly, imzalı/JWT session kullanılmalı.
-    const cookieStore = await cookies();
-    cookieStore.set("kaporta_auth", JSON.stringify({ id: user.id, role: user.role.key }), {
-      httpOnly: false,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 8, // 8 saat
+    // JWT tabanlı güvenli cookie ayarla
+    await setAuthCookie({
+      id: user.id,
+      email: user.email,
+      role: user.role.key,
+      fullName: user.fullName,
     });
 
     return { success: true };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      console.error(error);
+      console.error("Prisma error:", error.code);
     } else {
-      console.error(error);
+      console.error("Login error:", error);
     }
     return { success: false, error: "Beklenmedik hata oluştu." };
   }

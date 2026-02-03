@@ -1,44 +1,125 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jwtVerify } from "jose";
 
-const PUBLIC_PATHS = ["/", "/login"];
+const DEFAULT_JWT_SECRET = "CHANGE_THIS_SECRET_IN_PRODUCTION_MIN_32_CHARS!";
 
-export function middleware(req: NextRequest) {
+function getJwtSecret(): Uint8Array {
+  const raw = process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === "production") {
+    if (!raw || raw === DEFAULT_JWT_SECRET) {
+      throw new Error("JWT_SECRET must be set to a secure value in production.");
+    }
+  }
+  return new TextEncoder().encode(raw || DEFAULT_JWT_SECRET);
+}
+
+const JWT_SECRET = getJwtSecret();
+
+const PUBLIC_PATHS = ["/", "/login", "/api-docs"];
+const PUBLIC_API_PATHS = ["/api/auth/login", "/api/review-links/view", "/api/openapi"];
+
+async function verifyToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow review links and public assets/APIs
+  // Static assets - her zaman izin ver
   if (
-    pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/review") ||
-    pathname.startsWith("/favicon")
+    pathname.startsWith("/favicon") ||
+    pathname.includes(".")
   ) {
     return NextResponse.next();
   }
 
+  // Public review sayfaları
+  if (pathname.startsWith("/review")) {
+    return NextResponse.next();
+  }
+
+  // Public API endpoints
+  if (PUBLIC_API_PATHS.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
+
+  // Public sayfalar
   if (PUBLIC_PATHS.includes(pathname)) {
     return NextResponse.next();
   }
 
-  const auth = req.cookies.get("kaporta_auth");
-  if (!auth) {
-    const url = new URL("/", req.url);
-    return NextResponse.redirect(url);
+  // Auth kontrolü
+  const token = req.cookies.get("kaporta_auth")?.value;
+
+  if (!token) {
+    // API istekleri için 401 döndür
+    if (pathname.startsWith("/api")) {
+      return NextResponse.json(
+        { error: "Oturum açmanız gerekiyor." },
+        { status: 401 }
+      );
+    }
+    // Sayfa istekleri için login'e yönlendir
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
-  let role: string | null = null;
-  try {
-    role = JSON.parse(auth.value)?.role ?? null;
-  } catch {
-    role = null;
+  // JWT doğrulama
+  const payload = await verifyToken(token);
+
+  if (!payload) {
+    // Geçersiz token - cookie'yi sil ve yönlendir
+    const response = pathname.startsWith("/api")
+      ? NextResponse.json({ error: "Geçersiz oturum." }, { status: 401 })
+      : NextResponse.redirect(new URL("/", req.url));
+
+    response.cookies.delete("kaporta_auth");
+    return response;
   }
 
-  // Employee rolü ayarlar sayfasına giremesin
+  const role = payload.role as string;
+
+  // Admin-only API endpoints
+  const adminOnlyApis = ["/api/users", "/api/roles"];
+  if (
+    adminOnlyApis.some((p) => pathname.startsWith(p)) &&
+    !["system_admin", "admin"].includes(role)
+  ) {
+    return NextResponse.json(
+      { error: "Bu işlem için admin yetkisi gerekiyor." },
+      { status: 403 }
+    );
+  }
+
+  // Employee ayarlar sayfasına giremesin
   if (role === "employee" && pathname.startsWith("/settings")) {
-    const url = new URL("/dashboard", req.url);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  return NextResponse.next();
+  // Kullanıcı bilgisini header'a ekle (API'lerde kullanmak için)
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-user-id", String(payload.id));
+  requestHeaders.set("x-user-role", role);
+  requestHeaders.set("x-user-email", payload.email as string);
+
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+
+  // Security headers (ek koruma - Traefik'e ek olarak)
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  return response;
 }
 
 export const config = {

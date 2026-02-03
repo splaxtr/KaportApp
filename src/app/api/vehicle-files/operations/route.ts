@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
 
 function parseId(id: string | null) {
   if (!id) return null;
@@ -17,7 +18,7 @@ async function ensureStatus(label?: string | null) {
   return created.id;
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest) => {
   try {
     const fileId = parseId(req.nextUrl.searchParams.get("fileId"));
     if (!fileId) return badRequest("Geçersiz dosya id");
@@ -40,9 +41,9 @@ export async function GET(req: NextRequest) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["operations.manage"] });
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   try {
     const fileId = parseId(req.nextUrl.searchParams.get("fileId"));
     if (!fileId) return badRequest("Geçersiz dosya id");
@@ -82,4 +83,4 @@ export async function POST(req: NextRequest) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["operations.manage"] });

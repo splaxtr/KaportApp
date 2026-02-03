@@ -3,15 +3,18 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { normalizePlate } from "@/lib/plate";
+import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
+import { getAuditContext } from "@/lib/audit";
 
-type Params = { params: Promise<{ id: string }> };
+type Params = { id: string };
 
 function parseId(id: string) {
   const parsed = Number(id);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }) => {
   try {
     const { id } = await params;
     const vehicleId = parseId(id);
@@ -43,14 +46,16 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       }),
     ]);
 
+    logger.audit("delete", "vehicle", getAuditContext(req, user, { targetId: vehicleId }));
+
     return json({ ok: true });
   } catch (error) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["vehicles.manage"] });
 
-export async function PATCH(req: NextRequest, { params }: Params) {
+export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
   try {
     const { id } = await params;
     const vehicleId = parseId(id);
@@ -85,4 +90,4 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["vehicles.manage"] });

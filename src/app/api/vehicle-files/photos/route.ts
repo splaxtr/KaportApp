@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import fs from "fs/promises";
-import path from "path";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
+import { uploadBase64, uploadFile } from "@/lib/storage";
 
 function parseId(id: string | null) {
   if (!id) return null;
@@ -11,7 +11,7 @@ function parseId(id: string | null) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest) => {
   try {
     const fileId = parseId(req.nextUrl.searchParams.get("fileId"));
     if (!fileId) return badRequest("Geçersiz dosya id");
@@ -33,14 +33,14 @@ export async function GET(req: NextRequest) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["photos.manage"] });
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, { user }) => {
   try {
     const fileId = parseId(req.nextUrl.searchParams.get("fileId"));
     if (!fileId) return badRequest("Geçersiz dosya id");
 
-    // Accept multipart form-data for real file uploads. Fallback to JSON "url" if provided.
+    // Accept multipart form-data for real file uploads. Fallback to JSON (base64 or url).
     const createdRecords: { id: number; url: string; title: string | null; note: string | null }[] = [];
     let title: string | null = null;
     let note: string | null = null;
@@ -61,45 +61,43 @@ export async function POST(req: NextRequest) {
       const fileEntries = files.filter((f): f is File => f instanceof File && f.size > 0);
       if (fileEntries.length === 0) return badRequest("Geçerli dosya bulunamadı.");
 
-      const uploadDir = path.join(process.cwd(), "public", "uploads");
-      await fs.mkdir(uploadDir, { recursive: true });
-
       for (const file of fileEntries) {
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
-        const filePath = path.join(uploadDir, fileName);
-        const buffer = Buffer.from(await file.arrayBuffer());
-        await fs.writeFile(filePath, buffer);
-        const fileUrl = `/uploads/${fileName}`;
+        const upload = await uploadFile(file, fileId);
+        if (!upload.success) return badRequest(upload.error);
 
         const created = await prisma.photo.create({
           data: {
-            url: fileUrl,
+            url: upload.url,
             title,
             note,
             vehicleFileId: fileId,
+            uploadedById: user.id,
           },
         });
         createdRecords.push({ id: created.id, url: created.url, title: created.title, note: created.note });
       }
     } else {
       const body = await req.json().catch(() => ({}));
-      const url = typeof body?.url === "string" ? body.url.trim() : "";
+      const base64 = typeof body?.base64 === "string" ? body.base64.trim() : "";
+      const mimeType = typeof body?.mimeType === "string" ? body.mimeType.trim() : "";
       title = typeof body?.title === "string" ? body.title.trim() : null;
       note = typeof body?.note === "string" ? body.note.trim() : null;
-      if (url) {
+
+      if (base64 && mimeType) {
+        const upload = await uploadBase64(base64, fileId, mimeType);
+        if (!upload.success) return badRequest(upload.error);
         const created = await prisma.photo.create({
-          data: { url, title, note, vehicleFileId: fileId },
+          data: { url: upload.url, title, note, vehicleFileId: fileId, uploadedById: user.id },
         });
         createdRecords.push({ id: created.id, url: created.url, title: created.title, note: created.note });
       }
     }
 
-    if (createdRecords.length === 0) return badRequest("Fotoğraf dosyası veya URL zorunlu.");
+    if (createdRecords.length === 0) return badRequest("Fotoğraf dosyası veya base64 zorunlu.");
 
     return json(createdRecords, { status: 201 });
   } catch (error) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["photos.manage"] });

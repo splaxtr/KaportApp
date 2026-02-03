@@ -2,23 +2,12 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
+import { createCustomerSchema, validate } from "@/lib/validations";
+import { logger } from "@/lib/logger";
 
-type CustomerPayload = {
-  fullName?: string;
-  email?: string | null;
-  tcVkn?: string | null;
-  note?: string | null;
-  phones?: { label?: string | null; phone: string }[];
-  addresses?: {
-    label?: string | null;
-    address: string;
-    city?: string | null;
-    district?: string | null;
-    postalCode?: string | null;
-  }[];
-};
-
-export async function GET(req: NextRequest) {
+// GET - Müşteri listesi (tüm kullanıcılar)
+export const GET = withAuth(async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim();
@@ -52,58 +41,58 @@ export async function GET(req: NextRequest) {
         phones: c.phones,
         addresses: c.addresses,
         createdAt: c.createdAt,
-      })),
+      }))
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Customer list error", error as Error, { path: "/api/customers", method: "GET" });
     return serverError();
   }
-}
+}, { requiredPermissions: ["customers.manage"] });
 
-export async function POST(req: NextRequest) {
+// POST - Yeni müşteri oluştur (tüm kullanıcılar)
+export const POST = withAuth(async (req: NextRequest) => {
   try {
-    const body = (await req.json()) as CustomerPayload;
-    const fullName = typeof body?.fullName === "string" ? body.fullName.trim() : "";
-    const email =
-      typeof body?.email === "string" && body.email.length > 0 ? body.email.trim().toLowerCase() : null;
-    const tcVkn = typeof body?.tcVkn === "string" && body.tcVkn.trim().length > 0 ? body.tcVkn.trim() : null;
-    const note = typeof body?.note === "string" && body.note.trim().length > 0 ? body.note.trim() : null;
+    const body = await req.json().catch(() => ({}));
 
-    if (!fullName) {
-      return badRequest("fullName gereklidir.");
+    // Zod validation
+    const validation = validate(createCustomerSchema, body);
+    if (!validation.success) {
+      return badRequest(validation.error);
     }
 
-    const phones =
-      Array.isArray(body?.phones) && body.phones.length > 0
-        ? body.phones.map((p) => ({
-            label: p.label ?? null,
-            phone: p.phone.trim(),
-          }))
-        : [];
-
-    const addresses =
-      Array.isArray(body?.addresses) && body.addresses.length > 0
-        ? body.addresses.map((a) => ({
-            label: a.label ?? null,
-            address: a.address.trim(),
-            city: a.city ?? null,
-            district: a.district ?? null,
-            postalCode: a.postalCode ?? null,
-          }))
-        : [];
+    const { fullName, email, tcVkn, note, phones, addresses } = validation.data;
 
     const created = await prisma.customer.create({
       data: {
         fullName,
-        email,
-        tcVkn,
-        phones: phones.length ? { createMany: { data: phones } } : undefined,
-        addresses: addresses.length ? { createMany: { data: addresses } } : undefined,
+        email: email ?? null,
+        tcVkn: tcVkn ?? null,
+        phones: phones?.length
+          ? {
+              createMany: {
+                data: phones.map((p) => ({
+                  label: p.label ?? null,
+                  phone: p.phone,
+                })),
+              },
+            }
+          : undefined,
+        addresses: addresses?.length
+          ? {
+              createMany: {
+                data: addresses.map((a) => ({
+                  label: a.label ?? null,
+                  address: a.address,
+                  city: a.city ?? null,
+                  district: a.district ?? null,
+                  postalCode: a.postalCode ?? null,
+                })),
+              },
+            }
+          : undefined,
         notes: note
           ? {
-              create: {
-                note,
-              },
+              create: { note },
             }
           : undefined,
       },
@@ -122,10 +111,10 @@ export async function POST(req: NextRequest) {
         phones: created.phones,
         addresses: created.addresses,
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Customer create error", error as Error, { path: "/api/customers", method: "POST" });
     return serverError();
   }
-}
+}, { requiredPermissions: ["customers.manage"] });

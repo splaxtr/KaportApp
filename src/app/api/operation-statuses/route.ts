@@ -2,8 +2,9 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
 
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const items = await prisma.operationStatus.findMany({
       where: { deletedAt: null },
@@ -22,9 +23,9 @@ export async function GET() {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["operations.manage"] });
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   try {
     const body = await req.json().catch(() => ({}));
     const label = typeof body?.label === "string" ? body.label.trim() : "";
@@ -49,4 +50,4 @@ export async function POST(req: NextRequest) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["operations.manage"] });

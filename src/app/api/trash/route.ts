@@ -2,6 +2,10 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
+import { deleteFile } from "@/lib/storage";
+import { logger } from "@/lib/logger";
+import { getAuditContext } from "@/lib/audit";
 
 type TrashItem = {
   id: number;
@@ -14,7 +18,7 @@ type ActionPayload =
   | { action: "restore" | "purge"; id: number; type: TrashItem["type"] }
   | { action: "purgeAll" };
 
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const [customers, experts, vehicles, files, parts, operations, photos] = await Promise.all([
       prisma.customer.findMany({ where: { deletedAt: { not: null } } }),
@@ -79,7 +83,7 @@ export async function GET() {
     console.error(error);
     return serverError();
   }
-}
+}, { requireAdmin: true });
 
 async function restoreItem(type: TrashItem["type"], id: number) {
   switch (type) {
@@ -103,6 +107,10 @@ async function restoreItem(type: TrashItem["type"], id: number) {
 }
 
 async function purgeVehicleFile(id: number) {
+  const photos = await prisma.photo.findMany({ where: { vehicleFileId: id } });
+  for (const photo of photos) {
+    await deleteFile(photo.url);
+  }
   await prisma.$transaction([
     prisma.part.deleteMany({ where: { vehicleFileId: id } }),
     prisma.operation.deleteMany({ where: { vehicleFileId: id } }),
@@ -152,13 +160,17 @@ async function purgeItem(type: TrashItem["type"], id: number) {
     case "operation":
       return prisma.operation.delete({ where: { id } });
     case "photo":
+      const photo = await prisma.photo.findUnique({ where: { id } });
+      if (photo) {
+        await deleteFile(photo.url);
+      }
       return prisma.photo.delete({ where: { id } });
     default:
       throw new Error("unknown type");
   }
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, { user }) => {
   try {
     const body = (await req.json().catch(() => ({}))) as ActionPayload;
     if (!body || !("action" in body)) return badRequest("Geçersiz istek");
@@ -184,6 +196,7 @@ export async function POST(req: NextRequest) {
       for (const e of experts) {
         await purgeExpert(e.id);
       }
+      logger.audit("purge_all", "trash", getAuditContext(req, user));
       return json({ ok: true });
     }
 
@@ -192,8 +205,10 @@ export async function POST(req: NextRequest) {
 
     if (action === "restore") {
       await restoreItem(type, id);
+      logger.audit("restore", type, getAuditContext(req, user, { targetId: id }));
     } else if (action === "purge") {
       await purgeItem(type, id);
+      logger.audit("purge", type, getAuditContext(req, user, { targetId: id }));
     }
 
     return json({ ok: true });
@@ -201,4 +216,4 @@ export async function POST(req: NextRequest) {
     console.error(error);
     return serverError();
   }
-}
+}, { requireAdmin: true });

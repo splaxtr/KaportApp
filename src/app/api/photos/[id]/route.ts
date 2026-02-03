@@ -2,15 +2,18 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
+import { getAuditContext } from "@/lib/audit";
 
-type Params = { params: Promise<{ id: string }> };
+type Params = { id: string };
 
 function parseId(id: string) {
   const parsed = Number(id);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-export async function PATCH(req: NextRequest, { params }: Params) {
+export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
   try {
     const { id } = await params;
     const photoId = parseId(id);
@@ -20,14 +23,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!existing) return notFound();
 
     const body = await req.json().catch(() => ({}));
-    const data: { title?: string | null; note?: string | null; url?: string } = {};
+    const data: { title?: string | null; note?: string | null } = {};
     if (body?.title !== undefined) data.title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : null;
     if (body?.note !== undefined) data.note = typeof body.note === "string" && body.note.trim() ? body.note.trim() : null;
-    if (body?.url !== undefined) {
-      const url = typeof body.url === "string" ? body.url.trim() : "";
-      if (!url) return badRequest("Geçersiz url");
-      data.url = url;
-    }
 
     const updated = await prisma.photo.update({
       where: { id: photoId },
@@ -39,9 +37,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["photos.manage"] });
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }) => {
   try {
     const { id } = await params;
     const photoId = parseId(id);
@@ -51,9 +49,12 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (!existing) return notFound();
 
     await prisma.photo.update({ where: { id: photoId }, data: { deletedAt: new Date() } });
+
+    logger.audit("delete", "photo", getAuditContext(req, user, { targetId: photoId }));
+
     return json({ ok: true });
   } catch (error) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["photos.manage"] });

@@ -10,8 +10,13 @@ RUN npm ci
 COPY . .
 
 # Generate Prisma client and build Next.js
+ARG DATABASE_URL="postgresql://user:pass@localhost:5432/db"
+ARG JWT_SECRET="BUILD_TIME_ONLY_SECRET_32_CHARS_MIN_123456"
+ENV DATABASE_URL=${DATABASE_URL}
+ENV JWT_SECRET=${JWT_SECRET}
 RUN npx prisma generate
 RUN npm run build
+RUN npm prune --omit=dev
 
 # Runtime stage
 FROM node:20-alpine AS runner

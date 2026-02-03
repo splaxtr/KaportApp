@@ -2,15 +2,16 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
 
-type Params = { params: Promise<{ id: string }> };
+type Params = { id: string };
 
 function parseId(id: string) {
   const parsed = Number(id);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export const GET = withAuth<Params>(async (_req: NextRequest, { params }) => {
   try {
     const { id } = await params;
     const customerId = parseId(id);
@@ -29,9 +30,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["customers.manage"] });
 
-export async function POST(req: NextRequest, { params }: Params) {
+export const POST = withAuth<Params>(async (req: NextRequest, { params }) => {
   try {
     const { id } = await params;
     const customerId = parseId(id);
@@ -55,4 +56,4 @@ export async function POST(req: NextRequest, { params }: Params) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["customers.manage"] });

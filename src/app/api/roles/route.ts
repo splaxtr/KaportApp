@@ -1,7 +1,8 @@
 import { json, serverError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
+import { withAuth } from "@/lib/api-guard";
 
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const roles = await prisma.role.findMany({
       where: { deletedAt: null },
@@ -19,4 +20,4 @@ export async function GET() {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["roles.manage"] });

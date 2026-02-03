@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, serverError } from "@/lib/http";
+import { withAuth } from "@/lib/api-guard";
 
 type ExpertPayload = {
   fullName?: string;
@@ -11,7 +12,7 @@ type ExpertPayload = {
   note?: string | null;
 };
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim();
@@ -47,9 +48,9 @@ export async function GET(req: NextRequest) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["experts.manage"] });
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   try {
     const body = (await req.json()) as ExpertPayload;
     const fullName = typeof body?.fullName === "string" ? body.fullName.trim() : "";
@@ -86,4 +87,4 @@ export async function POST(req: NextRequest) {
     console.error(error);
     return serverError();
   }
-}
+}, { requiredPermissions: ["experts.manage"] });
