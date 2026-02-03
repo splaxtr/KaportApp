@@ -41,12 +41,9 @@ services:
   vurthex-db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER_FILE: /run/secrets/db_user
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_USER: kaportapp_user
+      POSTGRES_PASSWORD: Kp0rtDb_X9v2ThEx2025
       POSTGRES_DB: kaportapp_db
-    secrets:
-      - db_user
-      - db_password
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -62,12 +59,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-
-secrets:
-  db_user:
-    file: ./secrets/db_user.txt
-  db_password:
-    file: ./secrets/db_password.txt
 
 volumes:
   pgdata:
