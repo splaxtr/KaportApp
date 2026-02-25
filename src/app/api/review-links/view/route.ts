@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { withRateLimit } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 import { createReviewSessionToken } from "@/lib/review-session";
 
 function statusFrom(exp: Date | null, revokedAt: Date | null) {
@@ -39,7 +40,7 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     const status = statusFrom(link.expiresAt, link.revokedAt);
     if (status !== "active") return badRequest("Link aktif değil.");
 
-    const access = link.accessKeys.find((k) => !k.usedAt);
+    const access = link.accessKeys.find((k: { usedAt: Date | null }) => !k.usedAt);
     if (!access) return badRequest("Anahtar geçersiz veya kullanıldı.");
 
     const update = await prisma.reviewAccessKey.updateMany({
@@ -66,9 +67,9 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       customer: { fullName: vf.customer.fullName },
       expert: vf.expert ? { fullName: vf.expert.fullName } : null,
       quickNote: vf.quickNote,
-      parts: vf.parts.map((p) => ({ id: p.id, name: p.name, quantity: p.quantity })),
-      operations: vf.operations.map((o) => ({ id: o.id, title: o.title })),
-      photos: vf.photos.map((p) => ({
+      parts: vf.parts.map((p: { id: number; name: string; quantity: number }) => ({ id: p.id, name: p.name, quantity: p.quantity })),
+      operations: vf.operations.map((o: { id: number; title: string }) => ({ id: o.id, title: o.title })),
+      photos: vf.photos.map((p: { id: number; title: string | null; note: string | null }) => ({
         id: p.id,
         url: `/api/review-links/photo?session=${encodeURIComponent(session)}&photoId=${p.id}`,
         title: p.title,
@@ -76,7 +77,7 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       })),
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Review link view error", error as Error, { path: "/api/review-links/view", method: "POST" });
     return serverError();
   }
 }, 10, 60000);

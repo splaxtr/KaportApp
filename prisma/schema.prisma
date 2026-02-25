@@ -18,6 +18,29 @@ enum VehicleFileStatus {
   completed
 }
 
+enum NotificationType {
+  file_created
+  status_changed
+  part_updated
+  appointment_reminder
+  system
+}
+
+enum AppointmentType {
+  intake
+  delivery
+  inspection
+  expert
+  other
+}
+
+enum AppointmentStatus {
+  scheduled
+  confirmed
+  cancelled
+  completed
+}
+
 model User {
   id           Int       @id @default(autoincrement())
   createdAt    DateTime  @default(now())
@@ -34,6 +57,8 @@ model User {
   permissions   UserPermission[]
   customerNotes CustomerNote[]
   photos        Photo[]
+  appointments  Appointment[]
+  notifications Notification[]
 }
 
 model Role {
@@ -93,10 +118,11 @@ model Customer {
   email     String?
   tcVkn     String?
 
-  phones     CustomerPhone[]
-  addresses  CustomerAddress[]
-  notes      CustomerNote[]
-  files      VehicleFile[]
+  phones       CustomerPhone[]
+  addresses    CustomerAddress[]
+  notes        CustomerNote[]
+  files        VehicleFile[]
+  appointments Appointment[]
 
   @@index([fullName])
   @@index([deletedAt])
@@ -182,6 +208,8 @@ model VehicleFile {
   accidentDate DateTime?
   fileNumber   String?
   quickNote    String?
+  discount     Decimal?  @db.Decimal(12, 2) @default(0)
+  taxRate      Decimal?  @db.Decimal(5, 2) @default(20)
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id])
   customer Customer @relation(fields: [customerId], references: [id])
@@ -191,6 +219,7 @@ model VehicleFile {
   operations   Operation[]
   photos       Photo[]
   reviewTokens ReviewToken[]
+  appointments Appointment[]
 
   @@index([vehicleId])
   @@index([customerId])
@@ -220,6 +249,8 @@ model Part {
   name          String
   description   String?
   quantity      Int       @default(1)
+  unitPrice     Decimal?  @db.Decimal(12, 2)
+  totalPrice    Decimal?  @db.Decimal(12, 2)
   vehicleFileId Int
   statusId      Int
 
@@ -251,6 +282,8 @@ model Operation {
   deletedAt     DateTime?
   title         String
   description   String?
+  laborCost     Decimal?  @db.Decimal(12, 2)
+  materialCost  Decimal?  @db.Decimal(12, 2)
   vehicleFileId Int
   statusId      Int
 
@@ -325,4 +358,47 @@ model ReviewAccessKey {
 
   @@index([tokenId])
   @@index([usedAt])
+}
+
+model Appointment {
+  id            Int               @id @default(autoincrement())
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  deletedAt     DateTime?
+  date          DateTime
+  endDate       DateTime?
+  type          AppointmentType   @default(other)
+  status        AppointmentStatus @default(scheduled)
+  title         String
+  notes         String?
+  vehicleFileId Int?
+  customerId    Int?
+  assignedToId  Int?
+
+  vehicleFile VehicleFile? @relation(fields: [vehicleFileId], references: [id])
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  assignedTo  User?        @relation(fields: [assignedToId], references: [id])
+
+  @@index([date])
+  @@index([vehicleFileId])
+  @@index([customerId])
+  @@index([assignedToId])
+  @@index([deletedAt])
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  createdAt DateTime         @default(now())
+  userId    Int
+  type      NotificationType @default(system)
+  title     String
+  message   String
+  link      String?
+  readAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([readAt])
+  @@index([createdAt])
 }

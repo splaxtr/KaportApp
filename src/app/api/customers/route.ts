@@ -33,7 +33,8 @@ export const GET = withAuth(async (req: NextRequest) => {
     });
 
     return json(
-      customers.map((c) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      customers.map((c: any) => ({
         id: c.id,
         fullName: c.fullName,
         email: c.email,

@@ -50,7 +50,7 @@ export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }
 
     return json({ ok: true });
   } catch (error) {
-    console.error(error);
+    logger.error("Vehicle delete error", error as Error, { path: "/api/vehicles/[id]", method: "DELETE" });
     return serverError();
   }
 }, { requiredPermissions: ["vehicles.manage"] });
@@ -87,7 +87,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
       plateNormalized: updated.plateNormalized,
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Vehicle update error", error as Error, { path: "/api/vehicles/[id]", method: "PATCH" });
     return serverError();
   }
 }, { requiredPermissions: ["vehicles.manage"] });

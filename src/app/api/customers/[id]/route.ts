@@ -56,7 +56,7 @@ export const GET = withAuth<Params>(async (_req: NextRequest, { params }) => {
       email: customer.email,
       phones: customer.phones,
       addresses: customer.addresses,
-      notes: customer.notes.map((n) => ({
+      notes: customer.notes.map((n: { id: number; note: string; author: { id: number; fullName: string; email: string } | null; createdAt: Date }) => ({
         id: n.id,
         note: n.note,
         author: n.author ? { id: n.author.id, fullName: n.author.fullName, email: n.author.email } : null,
@@ -65,7 +65,7 @@ export const GET = withAuth<Params>(async (_req: NextRequest, { params }) => {
       createdAt: customer.createdAt,
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Customer fetch error", error as Error, { path: "/api/customers/[id]", method: "GET" });
     return serverError();
   }
 }, { requiredPermissions: ["customers.manage"] });
@@ -120,7 +120,8 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
         : null;
 
     // Replace phones/addresses if provided: soft delete existing then add new.
-    const result = await prisma.$transaction(async (tx) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any = await prisma.$transaction(async (tx: any) => {
       const updated = await tx.customer.update({
         where: { id: customerId },
         data,
@@ -169,7 +170,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
       addresses: refreshed?.addresses ?? [],
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Customer update error", error as Error, { path: "/api/customers/[id]", method: "PATCH" });
     return serverError();
   }
 }, { requiredPermissions: ["customers.manage"] });
@@ -194,7 +195,7 @@ export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }
 
     return json({ ok: true });
   } catch (error) {
-    console.error(error);
+    logger.error("Customer delete error", error as Error, { path: "/api/customers/[id]", method: "DELETE" });
     return serverError();
   }
 }, { requiredPermissions: ["customers.manage"] });

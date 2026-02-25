@@ -98,6 +98,8 @@ export const createPartSchema = z.object({
   name: z.string().min(2, "Parça adı en az 2 karakter olmalı").max(100),
   description: z.string().max(500).optional().nullable(),
   quantity: z.number().int().min(1).default(1),
+  unitPrice: z.number().min(0).optional().nullable(),
+  totalPrice: z.number().min(0).optional().nullable(),
   statusId: z.number().int().positive(),
 });
 
@@ -105,6 +107,8 @@ export const updatePartSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   description: z.string().max(500).optional().nullable(),
   quantity: z.number().int().min(1).optional(),
+  unitPrice: z.number().min(0).optional().nullable(),
+  totalPrice: z.number().min(0).optional().nullable(),
   statusId: z.number().int().positive().optional(),
 });
 
@@ -113,12 +117,16 @@ export const createOperationSchema = z.object({
   vehicleFileId: z.number().int().positive(),
   title: z.string().min(2, "İşlem başlığı en az 2 karakter olmalı").max(100),
   description: z.string().max(500).optional().nullable(),
+  laborCost: z.number().min(0).optional().nullable(),
+  materialCost: z.number().min(0).optional().nullable(),
   statusId: z.number().int().positive(),
 });
 
 export const updateOperationSchema = z.object({
   title: z.string().min(2).max(100).optional(),
   description: z.string().max(500).optional().nullable(),
+  laborCost: z.number().min(0).optional().nullable(),
+  materialCost: z.number().min(0).optional().nullable(),
   statusId: z.number().int().positive().optional(),
 });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
+import Image from "next/image";
 
 type FileData = {
   plate: string;
@@ -13,8 +14,14 @@ type FileData = {
   quickNote?: string | null;
 };
 
-type PartData = { id: number; name: string; quantity: number; status: string };
-type OperationData = { id: number; title: string; status: string; note?: string | null };
+type PartData = { id: number; name: string; quantity: number; status: string; unitPrice?: number | null; totalPrice?: number | null };
+type OperationData = { id: number; title: string; status: string; note?: string | null; laborCost?: number | null; materialCost?: number | null };
+type PricingSummary = {
+  fileId: number;
+  parts: { items: { id: number; name: string; quantity: number; unitPrice: number; totalPrice: number; status: string }[]; total: number };
+  operations: { items: { id: number; title: string; laborCost: number; materialCost: number; total: number; status: string }[]; laborTotal: number; materialTotal: number; total: number };
+  summary: { subtotal: number; discount: number; taxRate: number; afterDiscount: number; taxAmount: number; grandTotal: number };
+};
 type PhotoData = { id: number; title?: string | null; url: string; note?: string | null };
 
 const statusStyles: Record<string, string> = {
@@ -39,6 +46,7 @@ const tabs = [
   { key: "parts", label: "Parçalar" },
   { key: "operations", label: "İşlemler" },
   { key: "photos", label: "Fotoğraflar" },
+  { key: "pricing", label: "Maliyet" },
 ] as const;
 
 type TabKey = (typeof tabs)[number]["key"];
@@ -901,8 +909,8 @@ export function FileTabs({
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {photos.map((photo: any) => (
                 <div key={photo.id} className="overflow-hidden rounded-xl border border-white/10 bg-white/5">
-                  <div className="h-32 bg-black/20">
-                    <img src={photo.url} alt={photo.title || "Fotoğraf"} className="h-full w-full object-cover" />
+                  <div className="relative h-32 bg-black/20">
+                    <Image src={photo.url} alt={photo.title || "Fotoğraf"} className="object-cover" fill unoptimized />
                   </div>
                   <div className="space-y-1 px-4 py-3 text-sm text-slate-200">
                     <p className="font-semibold text-white">{photo.title || "Başlık yok"}</p>
@@ -927,6 +935,8 @@ export function FileTabs({
         </div>
       )}
 
+      {active === "pricing" && <PricingTab fileId={fileId} />}
+
       {showPhotoModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4">
           <div className="w-full max-w-lg space-y-3 rounded-2xl border border-white/10 bg-[#0f0f14] p-5 shadow-2xl">
@@ -949,6 +959,7 @@ export function FileTabs({
                 <input
                   type="file"
                   accept="image/*"
+                  capture="environment"
                   multiple
                   onChange={(e) => setPhotoForm((p) => ({ ...p, files: Array.from(e.target.files || []) }))}
                   className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-900 file:bg-lime-300 focus:border-lime-300/70 focus:outline-none"
@@ -1070,6 +1081,165 @@ export function FileTabs({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value);
+}
+
+function PricingTab({ fileId }: { fileId: number }) {
+  const [data, setData] = useState<PricingSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editDiscount, setEditDiscount] = useState("");
+  const [editTaxRate, setEditTaxRate] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const fetchPricing = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/vehicle-files/${fileId}/pricing`);
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+        setEditDiscount(String(json.summary.discount));
+        setEditTaxRate(String(json.summary.taxRate));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchPricing(); }, [fileId]);
+
+  const savePricing = async () => {
+    setSaving(true);
+    try {
+      await fetch(`/api/vehicle-files/${fileId}/pricing`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          discount: parseFloat(editDiscount) || 0,
+          taxRate: parseFloat(editTaxRate) || 20,
+        }),
+      });
+      await fetchPricing();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="animate-pulse rounded-xl bg-white/5 p-6 h-40" />;
+  if (!data) return <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">Maliyet bilgisi yüklenemedi.</div>;
+
+  return (
+    <div className="space-y-4">
+      {/* Parça Maliyetleri */}
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <h3 className="mb-3 text-sm font-semibold text-white">Parça Maliyetleri</h3>
+        {data.parts.items.length === 0 ? (
+          <p className="text-xs text-slate-400">Parça yok.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-slate-200">
+              <thead><tr className="border-b border-white/10 text-left text-slate-400">
+                <th className="pb-2">Parça</th><th className="pb-2">Adet</th><th className="pb-2 text-right">Birim Fiyat</th><th className="pb-2 text-right">Toplam</th>
+              </tr></thead>
+              <tbody>
+                {data.parts.items.map((p) => (
+                  <tr key={p.id} className="border-b border-white/5">
+                    <td className="py-2">{p.name}</td>
+                    <td className="py-2">{p.quantity}</td>
+                    <td className="py-2 text-right">{formatCurrency(p.unitPrice)}</td>
+                    <td className="py-2 text-right font-medium">{formatCurrency(p.totalPrice)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot><tr className="font-semibold text-white">
+                <td colSpan={3} className="pt-2 text-right">Parça Toplamı:</td>
+                <td className="pt-2 text-right">{formatCurrency(data.parts.total)}</td>
+              </tr></tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* İşlem Maliyetleri */}
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <h3 className="mb-3 text-sm font-semibold text-white">İşlem Maliyetleri</h3>
+        {data.operations.items.length === 0 ? (
+          <p className="text-xs text-slate-400">İşlem yok.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-slate-200">
+              <thead><tr className="border-b border-white/10 text-left text-slate-400">
+                <th className="pb-2">İşlem</th><th className="pb-2 text-right">İşçilik</th><th className="pb-2 text-right">Malzeme</th><th className="pb-2 text-right">Toplam</th>
+              </tr></thead>
+              <tbody>
+                {data.operations.items.map((op) => (
+                  <tr key={op.id} className="border-b border-white/5">
+                    <td className="py-2">{op.title}</td>
+                    <td className="py-2 text-right">{formatCurrency(op.laborCost)}</td>
+                    <td className="py-2 text-right">{formatCurrency(op.materialCost)}</td>
+                    <td className="py-2 text-right font-medium">{formatCurrency(op.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot><tr className="font-semibold text-white">
+                <td className="pt-2 text-right">Toplam:</td>
+                <td className="pt-2 text-right">{formatCurrency(data.operations.laborTotal)}</td>
+                <td className="pt-2 text-right">{formatCurrency(data.operations.materialTotal)}</td>
+                <td className="pt-2 text-right">{formatCurrency(data.operations.total)}</td>
+              </tr></tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Genel Özet */}
+      <div className="rounded-xl border border-lime-300/30 bg-white/5 p-4">
+        <h3 className="mb-3 text-sm font-semibold text-white">Genel Özet</h3>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between text-slate-300">
+            <span>Alt Toplam</span><span className="text-white">{formatCurrency(data.summary.subtotal)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="discount" className="text-slate-300">İndirim (TL)</label>
+            <input id="discount" type="number" min="0" step="0.01" value={editDiscount} onChange={(e) => setEditDiscount(e.target.value)}
+              className="w-28 rounded-md border border-white/15 bg-white/5 px-2 py-1 text-right text-sm text-white" />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="taxRate" className="text-slate-300">KDV (%)</label>
+            <input id="taxRate" type="number" min="0" max="100" step="1" value={editTaxRate} onChange={(e) => setEditTaxRate(e.target.value)}
+              className="w-28 rounded-md border border-white/15 bg-white/5 px-2 py-1 text-right text-sm text-white" />
+          </div>
+          <div className="flex justify-between text-slate-300">
+            <span>KDV Tutarı</span><span className="text-white">{formatCurrency(data.summary.taxAmount)}</span>
+          </div>
+          <div className="flex justify-between border-t border-white/10 pt-2 text-lg font-bold">
+            <span className="text-white">Genel Toplam</span><span className="text-lime-300">{formatCurrency(data.summary.grandTotal)}</span>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <a href={`/api/vehicle-files/${fileId}/pdf?type=quote`} target="_blank" rel="noreferrer"
+              className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/20">
+              Teklif PDF
+            </a>
+            <a href={`/api/vehicle-files/${fileId}/pdf?type=invoice`} target="_blank" rel="noreferrer"
+              className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/20">
+              Fatura PDF
+            </a>
+            <a href={`/api/vehicle-files/${fileId}/pdf?type=assessment`} target="_blank" rel="noreferrer"
+              className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/20">
+              Hasar Raporu PDF
+            </a>
+            <button type="button" onClick={savePricing} disabled={saving}
+              className="rounded-md border border-lime-500 bg-lime-400 px-4 py-1.5 text-xs font-semibold text-slate-950 transition hover:shadow-[0_10px_30px_rgba(190,242,100,0.35)] disabled:opacity-70">
+              {saving ? "Kaydediliyor..." : "Kaydet"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

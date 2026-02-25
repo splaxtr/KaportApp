@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { badRequest, notFound, serverError } from "@/lib/http";
 import { verifyReviewSessionToken } from "@/lib/review-session";
 import { withRateLimit } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "/app/uploads";
 const PUBLIC_URL_PREFIX = process.env.UPLOAD_URL_PREFIX || "/api/uploads";
@@ -18,6 +19,13 @@ const MIME_TYPES: Record<string, string> = {
   gif: "image/gif",
   webp: "image/webp",
 };
+
+/** Path traversal koruması: çözümlenmiş yolun upload dizini içinde kaldığını doğrula */
+function isPathSafe(filePath: string): boolean {
+  const resolved = path.resolve(filePath);
+  const resolvedBase = path.resolve(UPLOAD_DIR);
+  return resolved.startsWith(resolvedBase + path.sep) || resolved === resolvedBase;
+}
 
 export const GET = withRateLimit(async (req: NextRequest) => {
   try {
@@ -35,11 +43,13 @@ export const GET = withRateLimit(async (req: NextRequest) => {
     if (!photo.url.startsWith(PUBLIC_URL_PREFIX)) return notFound();
 
     const relativePath = photo.url.replace(PUBLIC_URL_PREFIX, "");
-    if (relativePath.includes("..") || relativePath.includes("~")) {
+    const filePath = path.join(UPLOAD_DIR, relativePath);
+
+    // path.resolve() ile sınır doğrulaması
+    if (!isPathSafe(filePath)) {
       return badRequest("Geçersiz yol");
     }
 
-    const filePath = path.join(UPLOAD_DIR, relativePath);
     if (!existsSync(filePath)) return notFound("Dosya bulunamadı");
 
     const fileBuffer = await readFile(filePath);
@@ -54,7 +64,7 @@ export const GET = withRateLimit(async (req: NextRequest) => {
       },
     });
   } catch (error) {
-    console.error("Review photo serve error:", error);
+    logger.error("Review photo serve error", error as Error, { path: "/api/review-links/photo", method: "GET" });
     return serverError();
   }
 }, 120, 60000);

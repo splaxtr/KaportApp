@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 type Params = { id: string };
 
@@ -34,7 +35,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
 
     return json({ id: updated.id, label: updated.label, color: updated.color, sortOrder: updated.sortOrder });
   } catch (error) {
-    console.error(error);
+    logger.error("Operation status update error", error as Error, { path: "/api/operation-statuses/[id]", method: "PATCH" });
     return serverError();
   }
 }, { requiredPermissions: ["operations.manage"] });
@@ -51,7 +52,7 @@ export const DELETE = withAuth<Params>(async (_req: NextRequest, { params }) => 
     await prisma.operationStatus.update({ where: { id: statusId }, data: { deletedAt: new Date() } });
     return json({ ok: true });
   } catch (error) {
-    console.error(error);
+    logger.error("Operation status delete error", error as Error, { path: "/api/operation-statuses/[id]", method: "DELETE" });
     return serverError();
   }
 }, { requiredPermissions: ["operations.manage"] });

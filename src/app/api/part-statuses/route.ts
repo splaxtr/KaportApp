@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 export const GET = withAuth(async () => {
   try {
@@ -12,7 +13,7 @@ export const GET = withAuth(async () => {
     });
 
     return json(
-      items.map((i) => ({
+      items.map((i: { id: number; label: string; color: string | null; sortOrder: number }) => ({
         id: i.id,
         label: i.label,
         color: i.color,
@@ -20,7 +21,7 @@ export const GET = withAuth(async () => {
       })),
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Part statuses fetch error", error as Error, { path: "/api/part-statuses", method: "GET" });
     return serverError();
   }
 }, { requiredPermissions: ["parts.manage"] });
@@ -47,7 +48,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 },
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Part status create error", error as Error, { path: "/api/part-statuses", method: "POST" });
     return serverError();
   }
 }, { requiredPermissions: ["parts.manage"] });

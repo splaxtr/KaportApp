@@ -3,7 +3,6 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
-import { RoleKey } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { getAuditContext } from "@/lib/audit";
 
@@ -39,7 +38,7 @@ export const DELETE = withAuth<Params>(
 
       return json({ ok: true });
     } catch (error) {
-      console.error(error);
+      logger.error("User delete error", error as Error, { path: "/api/users/[id]", method: "DELETE" });
       return serverError();
     }
   },
@@ -60,7 +59,7 @@ export const PATCH = withAuth<Params>(
       const body = await req.json().catch(() => ({}));
       const fullName = typeof body?.fullName === "string" ? body.fullName.trim() : undefined;
       const phone = typeof body?.phone === "string" ? body.phone.trim() : undefined;
-      const roleKey = body?.roleKey as RoleKey | undefined;
+      const roleKey = body?.roleKey as string | undefined;
 
       const data: { fullName?: string; phone?: string | null; roleId?: number } = {};
       if (fullName !== undefined) data.fullName = fullName || existing.fullName;
@@ -86,7 +85,7 @@ export const PATCH = withAuth<Params>(
         createdAt: updated.createdAt,
       });
     } catch (error) {
-      console.error(error);
+      logger.error("User update error", error as Error, { path: "/api/users/[id]", method: "PATCH" });
       return serverError();
     }
   },

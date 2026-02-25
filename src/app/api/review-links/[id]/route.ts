@@ -39,7 +39,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params, user })
 
     return json({ ok: true });
   } catch (error) {
-    console.error(error);
+    logger.error("Review link update error", error as Error, { path: "/api/review-links/[id]", method: "PATCH" });
     return serverError();
   }
 }, { requiredPermissions: ["reviews.manage"] });

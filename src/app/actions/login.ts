@@ -2,10 +2,11 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { setAuthCookie } from "@/lib/auth";
+import { logger } from "@/lib/logger";
+import { getRedis } from "@/lib/redis";
 
 export type LoginResult =
   | { success: true }
@@ -20,6 +21,18 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
   }
 
   try {
+    // Hesap kilitleme kontrolü (Redis-based)
+    const lockoutKey = `lockout:${email}`;
+    const attemptsKey = `login_attempts:${email}`;
+    const redis = await getRedis();
+
+    if (redis) {
+      const locked = await redis.get(lockoutKey);
+      if (locked) {
+        return { success: false, error: "Çok fazla başarısız deneme. 15 dakika sonra tekrar deneyin." };
+      }
+    }
+
     const user = await prisma.user.findFirst({
       where: { email, deletedAt: null },
       include: { role: true },
@@ -28,12 +41,37 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
     if (!user) {
       // Timing attack önleme - her durumda aynı süre bekle
       await bcrypt.compare(password, "$2a$12$placeholder.hash.for.timing");
+      // Başarısız deneme sayacı
+      if (redis) {
+        const attempts = await redis.incr(attemptsKey);
+        if (attempts === 1) await redis.expire(attemptsKey, 900);
+        if (attempts >= 5) {
+          await redis.set(lockoutKey, "1", { EX: 900 }); // 15 dakika kilitle
+          await redis.del(attemptsKey);
+        }
+      }
       return { success: false, error: "Geçersiz e-posta veya şifre." };
     }
 
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) {
+      // Başarısız deneme sayacı
+      if (redis) {
+        const attempts = await redis.incr(attemptsKey);
+        if (attempts === 1) await redis.expire(attemptsKey, 900);
+        if (attempts >= 5) {
+          await redis.set(lockoutKey, "1", { EX: 900 }); // 15 dakika kilitle
+          await redis.del(attemptsKey);
+          logger.warn("Account locked due to failed attempts", { email });
+        }
+      }
       return { success: false, error: "Geçersiz e-posta veya şifre." };
+    }
+
+    // Başarılı giriş - sayacı sıfırla
+    if (redis) {
+      await redis.del(attemptsKey);
+      await redis.del(lockoutKey);
     }
 
     // JWT tabanlı güvenli cookie ayarla
@@ -46,11 +84,7 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
 
     return { success: true };
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      console.error("Prisma error:", error.code);
-    } else {
-      console.error("Login error:", error);
-    }
+    logger.error("Login error", error as Error, { path: "actions/login" });
     return { success: false, error: "Beklenmedik hata oluştu." };
   }
 }

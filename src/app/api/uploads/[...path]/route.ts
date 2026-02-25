@@ -4,6 +4,7 @@ import { existsSync } from "fs";
 import path from "path";
 import { withRateLimit } from "@/lib/api-guard";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "/app/uploads";
 
@@ -66,7 +67,7 @@ export const GET = withAuth(
       },
     });
   } catch (error) {
-    console.error("File serve error:", error);
+    logger.error("File serve error", error as Error, { path: "/api/uploads/[...path]", method: "GET" });
     return NextResponse.json(
       { error: "Dosya okunurken hata oluştu" },
       { status: 500 }

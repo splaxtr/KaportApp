@@ -7,6 +7,7 @@ import { createToken } from "@/lib/auth";
 import { withLoginRateLimit } from "@/lib/api-guard";
 import { loginSchema, validate } from "@/lib/validations";
 import { logger } from "@/lib/logger";
+import { getRedis } from "@/lib/redis";
 
 function getClientIP(req: NextRequest): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -27,6 +28,21 @@ async function loginHandler(req: NextRequest) {
 
     const { email, password } = validation.data;
 
+    // Hesap kilitleme kontrolü (Redis-based)
+    const lockoutKey = `lockout:${email}`;
+    const attemptsKey = `login_attempts:${email}`;
+    const redis = await getRedis();
+
+    if (redis) {
+      const locked = await redis.get(lockoutKey);
+      if (locked) {
+        return NextResponse.json(
+          { error: "Çok fazla başarısız deneme. 15 dakika sonra tekrar deneyin." },
+          { status: 429 }
+        );
+      }
+    }
+
     const user = await prisma.user.findFirst({
       where: { email, deletedAt: null },
       include: { role: true },
@@ -35,14 +51,39 @@ async function loginHandler(req: NextRequest) {
     if (!user) {
       // Timing attack önleme
       await bcrypt.compare(password, "$2a$12$placeholder.hash.for.timing");
+      // Başarısız deneme sayacı
+      if (redis) {
+        const attempts = await redis.incr(attemptsKey);
+        if (attempts === 1) await redis.expire(attemptsKey, 900);
+        if (attempts >= 5) {
+          await redis.set(lockoutKey, "1", { EX: 900 });
+          await redis.del(attemptsKey);
+        }
+      }
       logger.auth("failed", email, { ip, userAgent, reason: "user_not_found" });
       return badRequest("Geçersiz e-posta veya şifre.");
     }
 
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) {
+      // Başarısız deneme sayacı
+      if (redis) {
+        const attempts = await redis.incr(attemptsKey);
+        if (attempts === 1) await redis.expire(attemptsKey, 900);
+        if (attempts >= 5) {
+          await redis.set(lockoutKey, "1", { EX: 900 });
+          await redis.del(attemptsKey);
+          logger.warn("Account locked due to failed attempts", { email, ip });
+        }
+      }
       logger.auth("failed", email, { ip, userAgent, reason: "wrong_password" });
       return badRequest("Geçersiz e-posta veya şifre.");
+    }
+
+    // Başarılı giriş - sayacı sıfırla
+    if (redis) {
+      await redis.del(attemptsKey);
+      await redis.del(lockoutKey);
     }
 
     // JWT token oluştur

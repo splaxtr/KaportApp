@@ -6,12 +6,14 @@ import Link from "next/link";
 import { useRouter, useSelectedLayoutSegment } from "next/navigation";
 
 import { logoutAction } from "@/app/actions/logout";
+import NotificationBell from "@/components/NotificationBell";
 
 const navItems = [
   { href: "/dashboard", label: "Özet", icon: "🏁" },
   { href: "/customers", label: "Müşteriler", icon: "👤" },
   { href: "/vehicles", label: "Araçlar", icon: "🚗" },
   { href: "/experts", label: "Eksperler", icon: "🧑‍🔧" },
+  { href: "/calendar", label: "Takvim", icon: "📅" },
   { href: "/review-links", label: "Sigorta İnceleme", icon: "🔗" },
   { href: "/trash", label: "Silinenler", icon: "🗑️" },
   { href: "/settings", label: "Ayarlar", icon: "⚙️" },
@@ -103,6 +105,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     const segment = useSelectedLayoutSegment();
     return (
       <nav
+        aria-label="Mobil menü"
         className="fixed bottom-3 left-1/2 z-40 w-[92%] max-w-md -translate-x-1/2 rounded-3xl border border-white/10 bg-[#0c0f1a]/88 px-3 py-2 text-[11px] text-slate-200 shadow-[0_16px_40px_rgba(0,0,0,0.4)] backdrop-blur-md md:hidden overflow-x-auto"
         style={{ scrollbarWidth: "none" }}
       >
@@ -163,7 +166,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 </span>
               </div>
             </div>
-            <nav className="space-y-1.5">
+            <nav aria-label="Ana menü" className="space-y-1.5">
               {visibleNav.map((item) => (
                 <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
               ))}
@@ -175,7 +178,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                   <p className="text-sm font-semibold text-white">{roleLabel}</p>
                   <p className="text-xs text-slate-400">KaportaAPP erişimi</p>
                 </div>
-                <LogoutButton />
+                <div className="flex items-center gap-2">
+                  <NotificationBell />
+                  <LogoutButton />
+                </div>
               </div>
             </div>
           </aside>
@@ -186,7 +192,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-400">KaportaAPP</p>
                 <h2 className="text-lg font-semibold">Kontrol Paneli</h2>
               </div>
-              <LogoutButton compact />
+              <div className="flex items-center gap-2">
+                <NotificationBell />
+                <LogoutButton compact />
+              </div>
             </div>
             {children}
           </main>

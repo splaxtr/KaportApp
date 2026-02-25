@@ -18,7 +18,7 @@ export const GET = withAuth(
       });
 
       return json(
-        users.map((user) => ({
+        users.map((user: { id: number; fullName: string; email: string; phone: string | null; role: { key: string }; createdAt: Date }) => ({
           id: user.id,
           fullName: user.fullName,
           email: user.email,

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Image from "next/image";
 
 type ReviewData = {
   vehicle: { plate: string; brandModel: string; color: string | null; accidentDate: string | null; fileNumber: string };
@@ -128,8 +129,8 @@ export default function ReviewClient({ token }: { token: string }) {
                 rel="noreferrer"
                 className="block overflow-hidden rounded-xl border border-white/10 bg-white/5"
               >
-                <div className="h-32 bg-black/20">
-                  <img src={ph.url} alt={ph.title ?? "Fotoğraf"} className="h-full w-full object-cover" />
+                <div className="relative h-32 bg-black/20">
+                  <Image src={ph.url} alt={ph.title ?? "Fotoğraf"} className="object-cover" fill unoptimized />
                 </div>
                 <div className="px-3 py-2 text-sm text-slate-200">
                   <p className="font-semibold text-white">{ph.title ?? "Fotoğraf"}</p>

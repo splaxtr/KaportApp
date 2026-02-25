@@ -5,6 +5,7 @@ import { normalizePlate } from "@/lib/plate";
 import { badRequest, json, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
+import { notifyAdmins } from "@/lib/notifications";
 
 type VehicleFilePayload = {
   vehicleId?: number;
@@ -42,7 +43,8 @@ export const GET = withAuth(async (req: NextRequest) => {
     });
 
     return json(
-      files.map((f) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      files.map((f: any) => ({
         id: f.id,
         plate: f.vehicle.plate,
         brandModel: f.brandModel,
@@ -96,7 +98,8 @@ export const POST = withAuth(async (req: NextRequest) => {
     const expert = expertId ? await prisma.expert.findFirst({ where: { id: expertId, deletedAt: null } }) : null;
     if (expertId && !expert) return badRequest("Eksper bulunamadı.");
 
-    const result = await prisma.$transaction(async (tx) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any = await prisma.$transaction(async (tx: any) => {
       const vehicle =
         vehicleIdResolved !== null
           ? await tx.vehicle.update({
@@ -143,6 +146,14 @@ export const POST = withAuth(async (req: NextRequest) => {
       });
 
       return created;
+    });
+
+    // Bildirim gönder
+    notifyAdmins({
+      type: "file_created",
+      title: "Yeni dosya oluşturuldu",
+      message: `${result.vehicle.plate} - ${result.brandModel} (${result.customer.fullName})`,
+      link: `/vehicles/${encodeURIComponent(result.vehicle.plate)}/${result.id}`,
     });
 
     return json(

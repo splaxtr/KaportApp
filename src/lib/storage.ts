@@ -1,6 +1,8 @@
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import crypto from "crypto";
+import { logger } from "@/lib/logger";
 
 // Upload dizini
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "/app/uploads";
@@ -54,12 +56,11 @@ export interface UploadError {
   error: string;
 }
 
-// Dosya adı oluştur
+// Dosya adı oluştur (crypto.randomUUID ile güvenli)
 function generateFileName(mimeType: string): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
+  const uuid = crypto.randomUUID();
   const ext = mimeType.split("/")[1] || "jpg";
-  return `${timestamp}-${random}.${ext}`;
+  return `${uuid}.${ext}`;
 }
 
 // Klasör oluştur
@@ -128,7 +129,7 @@ export async function uploadFile(
       size: file.size,
     };
   } catch (error) {
-    console.error("File upload error:", error);
+    logger.error("File upload error", error as Error, { path: "storage/uploadFile" });
     return { success: false, error: "Dosya yüklenirken hata oluştu" };
   }
 }
@@ -193,7 +194,7 @@ export async function uploadBase64(
       size: buffer.length,
     };
   } catch (error) {
-    console.error("Base64 upload error:", error);
+    logger.error("Base64 upload error", error as Error, { path: "storage/uploadBase64" });
     return { success: false, error: "Dosya yüklenirken hata oluştu" };
   }
 }
@@ -219,7 +220,7 @@ export async function deleteFile(url: string): Promise<boolean> {
     }
     return false;
   } catch (error) {
-    console.error("File delete error:", error);
+    logger.error("File delete error", error as Error, { path: "storage/deleteFile" });
     return false;
   }
 }

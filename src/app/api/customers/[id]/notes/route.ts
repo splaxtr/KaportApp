@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 type Params = { id: string };
 
@@ -27,7 +28,7 @@ export const GET = withAuth<Params>(async (_req: NextRequest, { params }) => {
     });
 
     return json(
-      notes.map((n) => ({
+      notes.map((n: { id: number; note: string; createdAt: Date; author: { id: number; fullName: string; email: string } | null }) => ({
         id: n.id,
         note: n.note,
         createdAt: n.createdAt,
@@ -35,7 +36,7 @@ export const GET = withAuth<Params>(async (_req: NextRequest, { params }) => {
       })),
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Customer notes fetch error", error as Error, { path: "/api/customers/[id]/notes", method: "GET" });
     return serverError();
   }
 }, { requiredPermissions: ["customers.manage"] });
@@ -71,7 +72,7 @@ export const POST = withAuth<Params>(async (req: NextRequest, { params, user }) 
       { status: 201 },
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Customer note create error", error as Error, { path: "/api/customers/[id]/notes", method: "POST" });
     return serverError();
   }
 }, { requiredPermissions: ["customers.manage"] });

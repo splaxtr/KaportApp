@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 type ExpertPayload = {
   fullName?: string;
@@ -34,7 +35,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     });
 
     return json(
-      experts.map((e) => ({
+      experts.map((e: { id: number; fullName: string; phone: string | null; email: string | null; company: string | null; note: string | null; createdAt: Date }) => ({
         id: e.id,
         fullName: e.fullName,
         phone: e.phone,
@@ -45,7 +46,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       })),
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Experts fetch error", error as Error, { path: "/api/experts", method: "GET" });
     return serverError();
   }
 }, { requiredPermissions: ["experts.manage"] });
@@ -84,7 +85,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 },
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Expert create error", error as Error, { path: "/api/experts", method: "POST" });
     return serverError();
   }
 }, { requiredPermissions: ["experts.manage"] });

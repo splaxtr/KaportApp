@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 type Params = { id: string };
 
@@ -27,7 +28,7 @@ export const GET = withAuth<Params>(async (_req: NextRequest, { params }) => {
 
     return json(phones);
   } catch (error) {
-    console.error(error);
+    logger.error("Customer phones fetch error", error as Error, { path: "/api/customers/[id]/phones", method: "GET" });
     return serverError();
   }
 }, { requiredPermissions: ["customers.manage"] });
@@ -53,7 +54,7 @@ export const POST = withAuth<Params>(async (req: NextRequest, { params }) => {
 
     return json(created, { status: 201 });
   } catch (error) {
-    console.error(error);
+    logger.error("Customer phone create error", error as Error, { path: "/api/customers/[id]/phones", method: "POST" });
     return serverError();
   }
 }, { requiredPermissions: ["customers.manage"] });

@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 function parseId(id: string | null) {
   if (!id) return null;
@@ -30,7 +31,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     });
 
     return json(
-      ops.map((o) => ({
+      ops.map((o: { id: number; title: string; description: string | null; status: { label: string } | null }) => ({
         id: o.id,
         title: o.title,
         note: o.description,
@@ -38,7 +39,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       })),
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Vehicle file operations fetch error", error as Error, { path: "/api/vehicle-files/operations", method: "GET" });
     return serverError();
   }
 }, { requiredPermissions: ["operations.manage"] });
@@ -80,7 +81,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 },
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Vehicle file operation create error", error as Error, { path: "/api/vehicle-files/operations", method: "POST" });
     return serverError();
   }
 }, { requiredPermissions: ["operations.manage"] });

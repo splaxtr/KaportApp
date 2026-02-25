@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { normalizePlate } from "@/lib/plate";
@@ -17,10 +16,11 @@ export const GET = withAuth(async (req: NextRequest) => {
     const q = searchParams.get("q")?.trim();
     const limit = Number(searchParams.get("limit") || "10");
 
-    const where: Prisma.VehicleWhereInput = { deletedAt: null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: Record<string, any> = { deletedAt: null };
     if (q) {
       where.OR = [
-        { plate: { contains: q, mode: "insensitive" as Prisma.QueryMode } },
+        { plate: { contains: q, mode: "insensitive" } },
         { plateNormalized: { startsWith: normalizePlate(q) } },
       ];
     }
@@ -41,7 +41,8 @@ export const GET = withAuth(async (req: NextRequest) => {
     });
 
     return json(
-      vehicles.map((v) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vehicles.map((v: any) => ({
         id: v.id,
         plate: v.plate,
         plateNormalized: v.plateNormalized,

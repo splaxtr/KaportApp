@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserFromRequest, AuthUser, isAdmin, isSystemAdmin } from "./auth";
 import { prisma } from "@/lib/prisma";
 import { getRedis } from "@/lib/redis";
+import { logger } from "@/lib/logger";
 
 type ApiHandler<T = unknown> = (
   req: NextRequest,
@@ -44,7 +45,7 @@ async function checkRateLimit(key: string, limit: number, windowMs: number): Pro
       }
       return count <= limit;
     } catch (error) {
-      console.error("Redis rate limit error:", error);
+      logger.error("Redis rate limit error", error as Error);
     }
   }
 
@@ -163,8 +164,8 @@ export function withAuth<T = unknown>(
         });
 
         const permissionKeys = new Set<string>();
-        dbUser?.role?.permissions.forEach((rp) => permissionKeys.add(rp.permission.key));
-        dbUser?.permissions.forEach((up) => permissionKeys.add(up.permission.key));
+        dbUser?.role?.permissions.forEach((rp: { permission: { key: string } }) => permissionKeys.add(rp.permission.key));
+        dbUser?.permissions.forEach((up: { permission: { key: string } }) => permissionKeys.add(up.permission.key));
 
         const hasAll = options.requiredPermissions.every((p) => permissionKeys.has(p));
         if (!hasAll) {
@@ -210,11 +211,11 @@ export function withLoginRateLimit(
 
 // Public endpoint için sadece rate limiting
 export function withRateLimit(
-  handler: (req: NextRequest, context?: { params: Promise<unknown> }) => Promise<NextResponse>,
+  handler: (req: NextRequest, context: { params: Promise<unknown> }) => Promise<NextResponse>,
   limit: number = 60,
   windowMs: number = 60000
 ) {
-  return async (req: NextRequest, context?: { params: Promise<unknown> }): Promise<NextResponse> => {
+  return async (req: NextRequest, context: { params: Promise<unknown> }): Promise<NextResponse> => {
     const rateLimitKey = getRateLimitKey(req);
 
     if (!(await checkRateLimit(rateLimitKey, limit, windowMs))) {

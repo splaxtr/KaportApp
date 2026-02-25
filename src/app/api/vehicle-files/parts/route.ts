@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 function parseId(id: string | null) {
   if (!id) return null;
@@ -30,7 +31,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     });
 
     return json(
-      parts.map((p) => ({
+      parts.map((p: { id: number; name: string; quantity: number; status: { label: string } | null }) => ({
         id: p.id,
         name: p.name,
         quantity: p.quantity,
@@ -38,7 +39,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       })),
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Vehicle file parts fetch error", error as Error, { path: "/api/vehicle-files/parts", method: "GET" });
     return serverError();
   }
 }, { requiredPermissions: ["parts.manage"] });
@@ -80,7 +81,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 },
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Vehicle file part create error", error as Error, { path: "/api/vehicle-files/parts", method: "POST" });
     return serverError();
   }
 }, { requiredPermissions: ["parts.manage"] });

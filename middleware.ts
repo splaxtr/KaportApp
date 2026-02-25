@@ -107,6 +107,12 @@ export async function middleware(req: NextRequest) {
   requestHeaders.set("x-user-role", role);
   requestHeaders.set("x-user-email", payload.email as string);
 
+  // Nonce tabanlı CSP üret (Web Crypto API - Edge uyumlu)
+  const nonceBytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(nonceBytes);
+  const nonce = btoa(String.fromCharCode(...nonceBytes));
+  requestHeaders.set("x-csp-nonce", nonce);
+
   const response = NextResponse.next({
     request: {
       headers: requestHeaders,
@@ -122,9 +128,19 @@ export async function middleware(req: NextRequest) {
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains"
   );
+
+  // Nonce-based CSP - /api-docs için Swagger UI inline style istisnası
+  const isApiDocs = pathname.startsWith("/api-docs");
+  const scriptSrc = isApiDocs
+    ? `'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'`
+    : `'self' 'nonce-${nonce}' 'unsafe-inline'`;
+  const styleSrc = isApiDocs
+    ? `'self' 'unsafe-inline'`
+    : `'self' 'nonce-${nonce}' 'unsafe-inline'`;
+
   response.headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+    `default-src 'self'; script-src ${scriptSrc}; style-src ${styleSrc}; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'`
   );
 
   return response;

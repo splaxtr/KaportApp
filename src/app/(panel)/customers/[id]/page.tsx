@@ -62,7 +62,7 @@ export default async function CustomerDetail({ params }: Params) {
               fullName: customer.fullName,
               email: customer.email,
               tcVkn: customer.tcVkn,
-              phones: customer.phones.map((p) => p.phone),
+              phones: customer.phones.map((p: { phone: string }) => p.phone),
               address: customer.addresses[0]?.address ?? "",
             }}
           />
@@ -80,7 +80,7 @@ export default async function CustomerDetail({ params }: Params) {
             <div className="rounded-xl border border-white/10 bg-white/5 p-3">
               <p className="text-sm text-slate-400">Telefon</p>
               <p className="text-white">
-                {customer.phones.length > 0 ? customer.phones.map((p) => p.phone).join(" / ") : "—"}
+                {customer.phones.length > 0 ? customer.phones.map((p: { phone: string }) => p.phone).join(" / ") : "—"}
               </p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:col-span-2">
@@ -88,7 +88,7 @@ export default async function CustomerDetail({ params }: Params) {
               <div className="space-y-1 text-white">
                 {customer.addresses.length === 0
                   ? "—"
-                  : customer.addresses.map((a) => (
+                  : customer.addresses.map((a: { id: number; address: string }) => (
                       <p key={a.id} className="text-sm text-slate-200">
                         {a.address}
                       </p>
@@ -104,7 +104,7 @@ export default async function CustomerDetail({ params }: Params) {
             <p className="mt-3 text-sm text-slate-300">Bu müşteri için dosya yok.</p>
           ) : (
             <div className="mt-3 space-y-2 text-sm text-slate-200">
-              {customer.files.map((f) => (
+              {customer.files.map((f: { id: number; brandModel: string; status: string; vehicle: { plate: string } }) => (
                 <Link
                   key={f.id}
                   href={`/vehicles/${encodeURIComponent(f.vehicle.plate)}/${f.id}`}
@@ -128,7 +128,7 @@ export default async function CustomerDetail({ params }: Params) {
           {customer.notes.length === 0 ? (
             <p className="text-slate-300">Not bulunmuyor.</p>
           ) : (
-            customer.notes.map((n) => (
+            customer.notes.map((n: { id: number; note: string; createdAt: Date }) => (
               <div key={n.id} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                 <p>{n.note}</p>
                 <p className="text-[11px] text-slate-400">

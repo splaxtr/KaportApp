@@ -34,43 +34,43 @@ export const GET = withAuth(async () => {
     ]);
 
     const items: TrashItem[] = [
-      ...customers.map<TrashItem>((c) => ({
+      ...customers.map((c: { id: number; fullName: string; deletedAt: Date | null }) => ({
         id: c.id,
         type: "customer",
         label: c.fullName,
         deletedAt: c.deletedAt!,
       })),
-      ...experts.map<TrashItem>((e) => ({
+      ...experts.map((e: { id: number; fullName: string; deletedAt: Date | null }) => ({
         id: e.id,
         type: "expert",
         label: e.fullName,
         deletedAt: e.deletedAt!,
       })),
-      ...vehicles.map<TrashItem>((v) => ({
+      ...vehicles.map((v: { id: number; plate: string; deletedAt: Date | null }) => ({
         id: v.id,
         type: "vehicle",
         label: v.plate,
         deletedAt: v.deletedAt!,
       })),
-      ...files.map<TrashItem>((f) => ({
+      ...files.map((f: { id: number; vehicle: { plate: string }; brandModel: string; fileNumber: string | null; deletedAt: Date | null }) => ({
         id: f.id,
         type: "vehicleFile",
         label: `${f.vehicle.plate} • ${f.brandModel} ${f.fileNumber ? `(${f.fileNumber})` : ""}`.trim(),
         deletedAt: f.deletedAt!,
       })),
-      ...parts.map<TrashItem>((p) => ({
+      ...parts.map((p: { id: number; name: string; deletedAt: Date | null }) => ({
         id: p.id,
         type: "part",
         label: p.name,
         deletedAt: p.deletedAt!,
       })),
-      ...operations.map<TrashItem>((o) => ({
+      ...operations.map((o: { id: number; title: string; deletedAt: Date | null }) => ({
         id: o.id,
         type: "operation",
         label: o.title,
         deletedAt: o.deletedAt!,
       })),
-      ...photos.map<TrashItem>((p) => ({
+      ...photos.map((p: { id: number; title: string | null; url: string; deletedAt: Date | null }) => ({
         id: p.id,
         type: "photo",
         label: p.title ?? p.url,
@@ -80,7 +80,7 @@ export const GET = withAuth(async () => {
 
     return json(items);
   } catch (error) {
-    console.error(error);
+    logger.error("Trash list error", error as Error, { path: "/api/trash", method: "GET" });
     return serverError();
   }
 }, { requireAdmin: true });
@@ -213,7 +213,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return json({ ok: true });
   } catch (error) {
-    console.error(error);
+    logger.error("Trash action error", error as Error, { path: "/api/trash", method: "POST" });
     return serverError();
   }
 }, { requireAdmin: true });

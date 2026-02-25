@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 function createToken() {
   return `rvw-${randomBytes(12).toString("hex")}`;
@@ -31,7 +32,7 @@ export const GET = withAuth(async () => {
     });
 
     return json(
-      tokens.map((t) => ({
+      tokens.map((t: { id: number; token: string; vehicleFile: { vehicle: { plate: string } }; vehicleFileId: number; expiresAt: Date | null; revokedAt: Date | null; createdAt: Date; accessKeys: { key: string }[] }) => ({
         id: t.id,
         token: t.token,
         plate: t.vehicleFile.vehicle.plate,
@@ -39,11 +40,11 @@ export const GET = withAuth(async () => {
         status: statusFrom(t.expiresAt, t.revokedAt),
         expiresAt: t.expiresAt,
         createdAt: t.createdAt,
-        keys: t.accessKeys.map((k) => k.key),
+        keys: t.accessKeys.map((k: { key: string }) => k.key),
       })),
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Review links fetch error", error as Error, { path: "/api/review-links", method: "GET" });
     return serverError();
   }
 }, { requiredPermissions: ["reviews.manage"] });
@@ -90,7 +91,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 },
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Review link create error", error as Error, { path: "/api/review-links", method: "POST" });
     return serverError();
   }
 }, { requiredPermissions: ["reviews.manage"] });

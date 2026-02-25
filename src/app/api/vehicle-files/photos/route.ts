@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 import { uploadBase64, uploadFile } from "@/lib/storage";
 
 function parseId(id: string | null) {
@@ -22,7 +23,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     });
 
     return json(
-      photos.map((p) => ({
+      photos.map((p: { id: number; url: string; title: string | null; note: string | null }) => ({
         id: p.id,
         url: p.url,
         title: p.title,
@@ -30,7 +31,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       })),
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Vehicle file photos fetch error", error as Error, { path: "/api/vehicle-files/photos", method: "GET" });
     return serverError();
   }
 }, { requiredPermissions: ["photos.manage"] });
@@ -97,7 +98,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return json(createdRecords, { status: 201 });
   } catch (error) {
-    console.error(error);
+    logger.error("Vehicle file photo upload error", error as Error, { path: "/api/vehicle-files/photos", method: "POST" });
     return serverError();
   }
 }, { requiredPermissions: ["photos.manage"] });

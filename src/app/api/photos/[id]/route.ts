@@ -34,7 +34,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
 
     return json({ id: updated.id, url: updated.url, title: updated.title, note: updated.note });
   } catch (error) {
-    console.error(error);
+    logger.error("Photo update error", error as Error, { path: "/api/photos/[id]", method: "PATCH" });
     return serverError();
   }
 }, { requiredPermissions: ["photos.manage"] });
@@ -54,7 +54,7 @@ export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }
 
     return json({ ok: true });
   } catch (error) {
-    console.error(error);
+    logger.error("Photo delete error", error as Error, { path: "/api/photos/[id]", method: "DELETE" });
     return serverError();
   }
 }, { requiredPermissions: ["photos.manage"] });

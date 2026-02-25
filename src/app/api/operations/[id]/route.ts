@@ -54,7 +54,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
       status: updated.status?.label ?? "",
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Operation update error", error as Error, { path: "/api/operations/[id]", method: "PATCH" });
     return serverError();
   }
 }, { requiredPermissions: ["operations.manage"] });
@@ -74,7 +74,7 @@ export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }
 
     return json({ ok: true });
   } catch (error) {
-    console.error(error);
+    logger.error("Operation delete error", error as Error, { path: "/api/operations/[id]", method: "DELETE" });
     return serverError();
   }
 }, { requiredPermissions: ["operations.manage"] });

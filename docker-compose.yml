@@ -37,7 +37,7 @@ services:
       - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Referrer-Policy=strict-origin-when-cross-origin"
       - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Permissions-Policy=camera=(), microphone=(), geolocation=()"
       - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Strict-Transport-Security=max-age=31536000; includeSubDomains"
-      - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Content-Security-Policy=default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+      # CSP middleware.ts tarafından nonce-based olarak dinamik ayarlanıyor
       - "traefik.http.routers.kucukaga.middlewares=kucukaga-security"
 
   vurthex-db:

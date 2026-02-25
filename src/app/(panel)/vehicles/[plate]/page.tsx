@@ -49,7 +49,7 @@ async function fetchFiles(plate: string): Promise<FileRow[]> {
     orderBy: { updatedAt: "desc" },
   });
 
-  return data.map((f) => ({
+  return data.map((f: { id: number; vehicle: { plate: string }; brandModel: string; customer: { id: number; fullName: string }; status: string; quickNote: string | null; updatedAt: Date; fileNumber: string | null; accidentDate: Date | null }) => ({
     id: f.id,
     plate: f.vehicle.plate,
     brandModel: f.brandModel,

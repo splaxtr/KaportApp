@@ -41,7 +41,7 @@ export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }
 
     return json({ ok: true });
   } catch (error) {
-    console.error(error);
+    logger.error("Expert delete error", error as Error, { path: "/api/experts/[id]", method: "DELETE" });
     return serverError();
   }
 }, { requiredPermissions: ["experts.manage"] });
@@ -85,7 +85,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
       createdAt: updated.createdAt,
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Expert update error", error as Error, { path: "/api/experts/[id]", method: "PATCH" });
     return serverError();
   }
 }, { requiredPermissions: ["experts.manage"] });

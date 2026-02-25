@@ -1,6 +1,7 @@
 import { json, serverError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-guard";
+import { logger } from "@/lib/logger";
 
 export const GET = withAuth(async () => {
   try {
@@ -9,7 +10,7 @@ export const GET = withAuth(async () => {
       orderBy: { createdAt: "asc" },
     });
     return json(
-      roles.map((r) => ({
+      roles.map((r: { id: number; key: string; name: string; description: string | null }) => ({
         id: r.id,
         key: r.key,
         name: r.name,
@@ -17,7 +18,7 @@ export const GET = withAuth(async () => {
       })),
     );
   } catch (error) {
-    console.error(error);
+    logger.error("Roles fetch error", error as Error, { path: "/api/roles", method: "GET" });
     return serverError();
   }
 }, { requiredPermissions: ["roles.manage"] });

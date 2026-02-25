@@ -1,4 +1,5 @@
 import { createClient } from "redis";
+import { logger } from "@/lib/logger";
 
 const REDIS_URL = process.env.REDIS_URL;
 
@@ -12,7 +13,7 @@ const globalForRedis = globalThis as unknown as {
 async function connectRedis(): Promise<RedisClient> {
   const client = createClient({ url: REDIS_URL });
   client.on("error", (err) => {
-    console.error("Redis error:", err);
+    logger.error("Redis connection error", err instanceof Error ? err : new Error(String(err)));
   });
   await client.connect();
   return client;
