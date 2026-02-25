@@ -36,29 +36,40 @@ services:
       - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.X-XSS-Protection=1; mode=block"
       - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Referrer-Policy=strict-origin-when-cross-origin"
       - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Permissions-Policy=camera=(), microphone=(), geolocation=()"
+      - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Strict-Transport-Security=max-age=31536000; includeSubDomains"
+      - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Content-Security-Policy=default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
       - "traefik.http.routers.kucukaga.middlewares=kucukaga-security"
 
   vurthex-db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: kaportapp_user
-      POSTGRES_PASSWORD: Kp0rtDb_X9v2ThEx2025
+      POSTGRES_USER_FILE: /run/secrets/db_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       POSTGRES_DB: kaportapp_db
+    secrets:
+      - db_user
+      - db_password
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-changeme_redis_secret}
     volumes:
       - redis_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme_redis_secret}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
+
+secrets:
+  db_user:
+    file: ./secrets/db_user.txt
+  db_password:
+    file: ./secrets/db_password.txt
 
 volumes:
   pgdata:

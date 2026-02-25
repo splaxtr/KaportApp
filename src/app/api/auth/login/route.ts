@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, serverError } from "@/lib/http";
+import { badRequest, serverError } from "@/lib/http";
 import { createToken } from "@/lib/auth";
 import { withLoginRateLimit } from "@/lib/api-guard";
 import { loginSchema, validate } from "@/lib/validations";
@@ -55,13 +55,23 @@ async function loginHandler(req: NextRequest) {
 
     logger.auth("login", email, { ip, userAgent, userId: user.id });
 
-    return json({
+    // Token'ı sadece httpOnly cookie olarak ayarla, response body'de döndürme
+    const response = NextResponse.json({
       id: user.id,
       fullName: user.fullName,
       email: user.email,
       role: user.role.key,
-      token,
     });
+
+    response.cookies.set("kaporta_auth", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 8, // 8 saat
+    });
+
+    return response;
   } catch (error) {
     logger.error("Login API error", error as Error, { ip, userAgent });
     return serverError();

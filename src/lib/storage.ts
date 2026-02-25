@@ -14,6 +14,32 @@ const ALLOWED_MIME_TYPES = [
   "image/gif",
 ];
 
+// Magic byte signatures for image file types
+const MAGIC_BYTES: Record<string, number[][]> = {
+  "image/jpeg": [[0xFF, 0xD8, 0xFF]],
+  "image/png": [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
+  "image/webp": [[0x52, 0x49, 0x46, 0x46]], // RIFF header
+  "image/gif": [[0x47, 0x49, 0x46, 0x38]], // GIF8
+};
+
+/** Dosyanın gerçek türünü magic byte'lardan doğrula */
+function validateMagicBytes(buffer: Buffer, declaredMime: string): boolean {
+  const signatures = MAGIC_BYTES[declaredMime];
+  if (!signatures) return false;
+
+  return signatures.some((sig) => {
+    if (buffer.length < sig.length) return false;
+    return sig.every((byte, i) => buffer[i] === byte);
+  });
+}
+
+/** Dosya yolunun upload dizini içinde kaldığını doğrula */
+function isPathSafe(filePath: string): boolean {
+  const resolved = path.resolve(filePath);
+  const resolvedBase = path.resolve(UPLOAD_DIR);
+  return resolved.startsWith(resolvedBase + path.sep) || resolved === resolvedBase;
+}
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export interface UploadResult {
@@ -74,9 +100,22 @@ export async function uploadFile(
     const fileName = generateFileName(mimeType);
     const filePath = path.join(subDir, fileName);
 
-    // Dosyayı kaydet
+    // Dosyayı oku ve magic byte doğrula
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    if (!validateMagicBytes(buffer, mimeType)) {
+      return {
+        success: false,
+        error: "Dosya içeriği belirtilen tür ile uyuşmuyor.",
+      };
+    }
+
+    // Path traversal koruması
+    if (!isPathSafe(filePath)) {
+      return { success: false, error: "Geçersiz dosya yolu." };
+    }
+
     await writeFile(filePath, buffer);
 
     // Public URL
@@ -121,6 +160,14 @@ export async function uploadBase64(
       };
     }
 
+    // Magic byte doğrulama
+    if (!validateMagicBytes(buffer, mimeType)) {
+      return {
+        success: false,
+        error: "Dosya içeriği belirtilen tür ile uyuşmuyor.",
+      };
+    }
+
     // Klasör yolu
     const subDir = path.join(UPLOAD_DIR, "photos", String(vehicleFileId));
     await ensureDir(subDir);
@@ -129,7 +176,11 @@ export async function uploadBase64(
     const fileName = generateFileName(mimeType);
     const filePath = path.join(subDir, fileName);
 
-    // Dosyayı kaydet
+    // Path traversal koruması
+    if (!isPathSafe(filePath)) {
+      return { success: false, error: "Geçersiz dosya yolu." };
+    }
+
     await writeFile(filePath, buffer);
 
     // Public URL
@@ -157,6 +208,11 @@ export async function deleteFile(url: string): Promise<boolean> {
     const relativePath = url.replace(PUBLIC_URL_PREFIX, "");
     const filePath = path.join(UPLOAD_DIR, relativePath);
 
+    // Path traversal koruması
+    if (!isPathSafe(filePath)) {
+      return false;
+    }
+
     if (existsSync(filePath)) {
       await unlink(filePath);
       return true;
@@ -173,6 +229,12 @@ export function fileExists(url: string): boolean {
   try {
     const relativePath = url.replace(PUBLIC_URL_PREFIX, "");
     const filePath = path.join(UPLOAD_DIR, relativePath);
+
+    // Path traversal koruması
+    if (!isPathSafe(filePath)) {
+      return false;
+    }
+
     return existsSync(filePath);
   } catch {
     return false;

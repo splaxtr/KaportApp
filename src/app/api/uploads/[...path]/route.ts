@@ -32,12 +32,18 @@ export const GET = withAuth(
 
     // Path güvenlik kontrolü (directory traversal önleme)
     const requestedPath = pathSegments.join("/");
-    if (requestedPath.includes("..") || requestedPath.includes("~")) {
+    if (requestedPath.includes("..") || requestedPath.includes("~") || requestedPath.includes("\0")) {
       return NextResponse.json({ error: "Geçersiz yol" }, { status: 400 });
     }
 
-    // Dosya yolu
-    const filePath = path.join(UPLOAD_DIR, requestedPath);
+    // Dosya yolu - path.resolve ile tam yol doğrulama
+    const filePath = path.resolve(UPLOAD_DIR, requestedPath);
+    const resolvedUploadDir = path.resolve(UPLOAD_DIR);
+
+    // Dosya yolunun UPLOAD_DIR içinde kaldığını doğrula
+    if (!filePath.startsWith(resolvedUploadDir + path.sep) && filePath !== resolvedUploadDir) {
+      return NextResponse.json({ error: "Geçersiz yol" }, { status: 400 });
+    }
 
     // Dosya var mı kontrol
     if (!existsSync(filePath)) {

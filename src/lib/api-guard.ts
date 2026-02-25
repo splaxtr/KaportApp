@@ -80,7 +80,8 @@ function isSameOrigin(req: NextRequest): boolean {
   const expectedOrigin = req.nextUrl.origin;
 
   const candidate = origin || referer;
-  if (!candidate) return true;
+  // Origin ve Referer header'ları yoksa state-changing istekleri reddet
+  if (!candidate) return false;
 
   try {
     const url = new URL(candidate);
@@ -180,11 +181,19 @@ export function withAuth<T = unknown>(
   };
 }
 
-// Login endpoint için özel rate limiter (daha sıkı)
+// Login endpoint için özel rate limiter (daha sıkı) + CSRF koruması
 export function withLoginRateLimit(
   handler: (req: NextRequest) => Promise<NextResponse>
 ) {
   return async (req: NextRequest): Promise<NextResponse> => {
+    // Login endpoint'ine de CSRF koruması uygula
+    if (shouldEnforceCsrf(req) && !isSameOrigin(req)) {
+      return NextResponse.json(
+        { error: "Geçersiz istek kaynağı." },
+        { status: 403 }
+      );
+    }
+
     const rateLimitKey = getRateLimitKey(req) + ":login";
 
     // Login için dakikada 5 deneme

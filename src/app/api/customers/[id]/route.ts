@@ -5,6 +5,8 @@ import { badRequest, json, notFound, serverError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 import { getAuditContext } from "@/lib/audit";
+import { updateCustomerSchema, phoneSchema, addressSchema } from "@/lib/validations";
+import { z } from "zod";
 
 type Params = { id: string };
 
@@ -77,27 +79,29 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
     const existing = await prisma.customer.findFirst({ where: { id: customerId, deletedAt: null } });
     if (!existing) return notFound();
 
-    const body = (await req.json()) as CustomerUpdatePayload;
+    const rawBody = await req.json().catch(() => ({}));
+
+    // Zod ile doğrulama
+    const patchSchema = updateCustomerSchema.extend({
+      phones: z.array(phoneSchema).optional(),
+      addresses: z.array(addressSchema).optional(),
+    });
+
+    const parsed = patchSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0]?.message || "Geçersiz veri";
+      return badRequest(firstError);
+    }
+
+    const body = parsed.data;
     const data: { fullName?: string; email?: string | null; tcVkn?: string | null } = {};
 
-    if (typeof body.fullName === "string") data.fullName = body.fullName.trim();
-    if (body.email !== undefined) {
-      if (typeof body.email === "string" && body.email.trim().length > 0) {
-        data.email = body.email.trim().toLowerCase();
-      } else {
-        data.email = null;
-      }
-    }
-    if (body.tcVkn !== undefined) {
-      if (typeof body.tcVkn === "string" && body.tcVkn.trim().length > 0) {
-        data.tcVkn = body.tcVkn.trim();
-      } else {
-        data.tcVkn = null;
-      }
-    }
+    if (body.fullName !== undefined) data.fullName = body.fullName;
+    if (body.email !== undefined) data.email = body.email;
+    if (body.tcVkn !== undefined) data.tcVkn = body.tcVkn;
 
     const phones =
-      Array.isArray(body?.phones) && body.phones.length > 0
+      Array.isArray(body.phones) && body.phones.length > 0
         ? body.phones.map((p) => ({
             label: p.label ?? null,
             phone: p.phone.trim(),
@@ -105,7 +109,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
         : null;
 
     const addresses =
-      Array.isArray(body?.addresses) && body.addresses.length > 0
+      Array.isArray(body.addresses) && body.addresses.length > 0
         ? body.addresses.map((a) => ({
             label: a.label ?? null,
             address: a.address.trim(),

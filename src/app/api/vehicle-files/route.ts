@@ -28,7 +28,9 @@ export const GET = withAuth(async (req: NextRequest) => {
     const files = await prisma.vehicleFile.findMany({
       where: {
         deletedAt: null,
-        ...(status ? { status: status as any } : {}),
+        ...(status && ["open", "pending", "completed"].includes(status)
+          ? { status: status as "open" | "pending" | "completed" }
+          : {}),
         ...(plate ? { vehicle: { plate: { contains: plate, mode: "insensitive" } } } : {}),
       },
       include: {
