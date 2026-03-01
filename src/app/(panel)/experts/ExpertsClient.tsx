@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { MobileCard, MobileCardList, CardAction, CardField } from "@/components/MobileCard";
 
 type Expert = {
   id: number;
@@ -169,7 +170,7 @@ export default function ExpertsClient() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
+      <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
         <div className="overflow-x-auto">
           <table className="min-w-[680px] divide-y divide-white/10 text-sm">
           <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
@@ -230,6 +231,27 @@ export default function ExpertsClient() {
         </table>
         </div>
       </div>
+
+      <MobileCardList loading={loading} empty={!loading && filtered.length === 0} emptyMessage="Kayıt bulunamadı." loadingMessage="Yükleniyor...">
+        {filtered.map((e) => (
+          <MobileCard
+            key={e.id}
+            title={e.fullName}
+            subtitle={e.company ?? undefined}
+            fields={[
+              { label: "Telefon", value: e.phone ?? "—" },
+              { label: "E-posta", value: e.email ?? "—" },
+              { label: "Kayıt", value: new Date(e.createdAt).toLocaleDateString("tr-TR") },
+            ]}
+            actions={
+              <>
+                <CardAction onClick={() => startEdit(e)}>Düzenle</CardAction>
+                <CardAction variant="danger" onClick={() => removeExpert(e.id)}>Sil</CardAction>
+              </>
+            }
+          />
+        ))}
+      </MobileCardList>
 
       {showModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">

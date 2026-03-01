@@ -114,7 +114,19 @@ export default async function CustomerDetail({ params }: Params) {
                     <p className="font-semibold text-white">{f.vehicle.plate}</p>
                     <p className="text-xs text-slate-300">{f.brandModel}</p>
                   </div>
-                  <span className="text-xs uppercase text-slate-300">{f.status}</span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium uppercase ${
+                      f.status === "open"
+                        ? "bg-sky-400/15 text-sky-400"
+                        : f.status === "pending"
+                          ? "bg-amber-400/15 text-amber-400"
+                          : f.status === "completed"
+                            ? "bg-emerald-400/15 text-emerald-400"
+                            : "bg-slate-400/15 text-slate-400"
+                    }`}
+                  >
+                    {f.status}
+                  </span>
                 </Link>
               ))}
             </div>

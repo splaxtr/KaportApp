@@ -41,3 +41,51 @@ export function PageSkeleton() {
     </div>
   );
 }
+
+export function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      {/* Header */}
+      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div className="h-3 w-20 rounded bg-white/10 mb-2" />
+        <div className="h-8 w-48 rounded bg-white/10 mb-1" />
+        <div className="h-4 w-64 rounded bg-white/10" />
+      </div>
+
+      {/* 2x2 stat cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg"
+          >
+            <div className="mb-3 h-3 w-24 rounded bg-white/10" />
+            <div className="h-8 w-16 rounded bg-white/10" />
+            <div className="mt-4 h-1.5 w-full rounded-full bg-white/10" />
+          </div>
+        ))}
+      </div>
+
+      {/* Chart area */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg">
+        <div className="mb-4 h-4 w-40 rounded bg-white/10" />
+        <div className="h-56 w-full rounded-xl bg-white/5" />
+      </div>
+
+      {/* Table */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg">
+        <div className="mb-4 h-5 w-32 rounded bg-white/10" />
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              <div className="h-4 flex-1 rounded bg-white/10" />
+              <div className="h-4 w-28 rounded bg-white/10" />
+              <div className="h-4 w-20 rounded bg-white/10" />
+              <div className="h-4 w-16 rounded bg-white/10" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

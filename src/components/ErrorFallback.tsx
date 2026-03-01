@@ -25,6 +25,12 @@ export default function ErrorFallback({ error, reset, title = "Bir hata oluştu"
         >
           Tekrar Dene
         </button>
+        <a
+          href="/dashboard"
+          className="mt-3 inline-block text-sm text-slate-400 transition hover:text-lime-300"
+        >
+          Geri don
+        </a>
       </div>
     </div>
   );

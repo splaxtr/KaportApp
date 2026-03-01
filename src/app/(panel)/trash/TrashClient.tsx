@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { MobileCard, MobileCardList, CardAction, CardField } from "@/components/MobileCard";
 
 type TrashItem = {
   id: number;
@@ -129,51 +130,81 @@ export default function TrashClient() {
         </div>
       ) : (
         Object.entries(grouped).map(([group, list]) => (
-          <div key={group} className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
-            <div className="flex items-center justify-between px-4 py-3 text-xs uppercase tracking-wide text-slate-300 bg-white/5">
-              <span>{group}</span>
-              <span className="text-slate-400">{list.length} kayıt</span>
-            </div>
-            <div className="overflow-x-auto">
-            <table className="min-w-[640px] divide-y divide-white/10 text-sm">
-              <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
-                <tr>
-                  <th className="px-4 py-3">Ad</th>
-                  <th className="px-4 py-3">Silinme Tarihi</th>
-                  <th className="px-4 py-3 text-right">İşlemler</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {list.map((item) => (
-                  <tr key={`${item.type}-${item.id}`} className="hover:bg-white/5">
-                    <td className="px-4 py-3 font-medium text-white">{item.label}</td>
-                    <td className="px-4 py-3 text-slate-200">
-                      {new Date(item.deletedAt).toLocaleString("tr-TR")}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => act(item.id, item.type, "restore")}
-                          disabled={working}
-                          className="rounded-md border border-white/15 px-3 py-1 text-slate-200 hover:border-lime-300/70 hover:text-white disabled:opacity-50"
-                        >
-                          Geri yükle
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => act(item.id, item.type, "purge")}
-                          disabled={working}
-                          className="rounded-md border border-red-500/50 px-3 py-1 text-red-200 hover:bg-red-500/10 disabled:opacity-50"
-                        >
-                          Kalıcı sil
-                        </button>
-                      </div>
-                    </td>
+          <div key={group}>
+            <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
+              <div className="flex items-center justify-between px-4 py-3 text-xs uppercase tracking-wide text-slate-300 bg-white/5">
+                <span>{group}</span>
+                <span className="text-slate-400">{list.length} kayıt</span>
+              </div>
+              <div className="overflow-x-auto">
+              <table className="min-w-[640px] divide-y divide-white/10 text-sm">
+                <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
+                  <tr>
+                    <th className="px-4 py-3">Ad</th>
+                    <th className="px-4 py-3">Silinme Tarihi</th>
+                    <th className="px-4 py-3 text-right">İşlemler</th>
                   </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {list.map((item) => (
+                    <tr key={`${item.type}-${item.id}`} className="hover:bg-white/5">
+                      <td className="px-4 py-3 font-medium text-white">{item.label}</td>
+                      <td className="px-4 py-3 text-slate-200">
+                        {new Date(item.deletedAt).toLocaleString("tr-TR")}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-2 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => act(item.id, item.type, "restore")}
+                            disabled={working}
+                            className="rounded-md border border-white/15 px-3 py-1 text-slate-200 hover:border-lime-300/70 hover:text-white disabled:opacity-50"
+                          >
+                            Geri yükle
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => act(item.id, item.type, "purge")}
+                            disabled={working}
+                            className="rounded-md border border-red-500/50 px-3 py-1 text-red-200 hover:bg-red-500/10 disabled:opacity-50"
+                          >
+                            Kalıcı sil
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              </div>
+            </div>
+
+            <div className="md:hidden space-y-3">
+              <div className="flex items-center justify-between px-1 py-2 text-xs uppercase tracking-wide text-slate-300">
+                <span>{group}</span>
+                <span className="text-slate-400">{list.length} kayıt</span>
+              </div>
+              <MobileCardList>
+                {list.map((item) => (
+                  <MobileCard
+                    key={`${item.type}-${item.id}`}
+                    title={item.label}
+                    fields={[
+                      { label: "Silinme", value: new Date(item.deletedAt).toLocaleString("tr-TR") },
+                    ]}
+                    actions={
+                      <>
+                        <CardAction onClick={() => act(item.id, item.type, "restore")} disabled={working}>
+                          Geri yükle
+                        </CardAction>
+                        <CardAction variant="danger" onClick={() => act(item.id, item.type, "purge")} disabled={working}>
+                          Kalıcı sil
+                        </CardAction>
+                      </>
+                    }
+                  />
                 ))}
-              </tbody>
-            </table>
+              </MobileCardList>
             </div>
           </div>
         ))

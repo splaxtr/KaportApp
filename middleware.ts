@@ -16,7 +16,7 @@ function getJwtSecret(): Uint8Array {
 const JWT_SECRET = getJwtSecret();
 
 const PUBLIC_PATHS = ["/", "/login", "/api-docs"];
-const PUBLIC_API_PATHS = ["/api/auth/login", "/api/review-links/view", "/api/openapi"];
+const PUBLIC_API_PATHS = ["/api/auth/login", "/api/review-links/view", "/api/openapi", "/api/health"];
 
 async function verifyToken(token: string) {
   try {

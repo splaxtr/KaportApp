@@ -35,7 +35,7 @@ async function StatsSection() {
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       {stats.map((stat) => (
         <div
           key={stat.label}
@@ -55,7 +55,7 @@ async function StatsSection() {
 
 function StatsSkeleton() {
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
         <CardSkeleton key={i} />
       ))}
@@ -198,10 +198,6 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-semibold text-white">Güncel operasyon özeti</h1>
             <p className="text-sm text-slate-200">KaportaAPP • Güvenli erişim</p>
           </div>
-          <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs text-slate-100 ring-1 ring-white/15">
-            <span className="h-2 w-2 rounded-full bg-lime-300" />
-            Canlı izleme açık
-          </div>
         </div>
       </div>
 
@@ -209,7 +205,10 @@ export default function DashboardPage() {
         <StatsSection />
       </Suspense>
 
-      <DashboardCharts />
+      <section>
+        <h2 className="mb-3 text-xs uppercase tracking-[0.18em] text-slate-400">Grafikler</h2>
+        <DashboardCharts />
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Suspense fallback={<TableSkeleton rows={6} />}>

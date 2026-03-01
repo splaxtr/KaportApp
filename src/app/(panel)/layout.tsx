@@ -1,7 +1,7 @@
 // Client layout for navigation highlighting
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSelectedLayoutSegment } from "next/navigation";
 
@@ -17,6 +17,22 @@ const navItems = [
   { href: "/review-links", label: "Sigorta İnceleme", icon: "🔗" },
   { href: "/trash", label: "Silinenler", icon: "🗑️" },
   { href: "/settings", label: "Ayarlar", icon: "⚙️" },
+];
+
+// The 5 primary items for the mobile bottom nav
+const mobileNavPrimary = [
+  { href: "/dashboard", label: "Özet", icon: "🏁" },
+  { href: "/vehicles", label: "Araçlar", icon: "🚗" },
+  { href: "/calendar", label: "Takvim", icon: "📅" },
+  { href: "/customers", label: "Müşteriler", icon: "👤" },
+  { href: "/settings", label: "Ayarlar", icon: "⚙️" },
+];
+
+// Secondary items accessible via the "Daha" overflow menu
+const mobileNavSecondary = [
+  { href: "/experts", label: "Eksperler", icon: "🧑‍🔧" },
+  { href: "/review-links", label: "Sigorta İnceleme", icon: "🔗" },
+  { href: "/trash", label: "Silinenler", icon: "🗑️" },
 ];
 
 function NavLink({ href, label, icon }: { href: string; label: string; icon: string }) {
@@ -43,24 +59,27 @@ function NavLink({ href, label, icon }: { href: string; label: string; icon: str
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [role, setRole] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [loggingOut, startLogout] = useTransition();
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    const hasAuth = document.cookie.includes("kaporta_auth=");
-    if (!hasAuth) {
-      router.replace("/");
-      return;
-    }
-    const raw = document.cookie.split("; ").find((c) => c.startsWith("kaporta_auth="));
-    if (raw) {
-      try {
-        const parsed = JSON.parse(decodeURIComponent(raw.split("=", 2)[1]));
-        setRole(parsed?.role ?? null);
-      } catch {
-        setRole(null);
-      }
-    }
+    // Cookie httpOnly olduğu için document.cookie'den okunamaz
+    // Rol bilgisini API'den al
+    fetch("/api/auth/me")
+      .then((r) => {
+        if (!r.ok) {
+          router.replace("/");
+          return null;
+        }
+        return r.json();
+      })
+      .then((data) => {
+        if (data?.role) setRole(data.role);
+        if (data?.email) setEmail(data.email);
+      })
+      .catch(() => {
+        router.replace("/");
+      });
   }, [router]);
 
   const handleLogout = () => {
@@ -71,6 +90,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         console.error("Logout failed", error);
       } finally {
         setRole(null);
+        setEmail(null);
         router.replace("/");
         router.refresh();
       }
@@ -101,70 +121,128 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const visibleNav = role === "employee" ? navItems.filter((item) => item.href !== "/settings") : navItems;
 
+  // For mobile: filter primary items based on role too
+  const visibleMobilePrimary =
+    role === "employee" ? mobileNavPrimary.filter((item) => item.href !== "/settings") : mobileNavPrimary;
+
+  const visibleMobileSecondary =
+    role === "employee" ? mobileNavSecondary : mobileNavSecondary;
+
   const MobileBottomNav = () => {
     const segment = useSelectedLayoutSegment();
+    const [moreOpen, setMoreOpen] = useState(false);
+    const moreRef = useRef<HTMLDivElement>(null);
+
+    // Close the "Daha" menu when clicking outside
+    useEffect(() => {
+      function handleClickOutside(e: MouseEvent) {
+        if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+          setMoreOpen(false);
+        }
+      }
+      if (moreOpen) {
+        document.addEventListener("mousedown", handleClickOutside);
+      }
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [moreOpen]);
+
+    // Check if any secondary item is active
+    const secondaryActive = visibleMobileSecondary.some(
+      (item) => item.href === `/${segment ?? ""}`,
+    );
+
     return (
       <nav
         aria-label="Mobil menü"
-        className="fixed bottom-3 left-1/2 z-40 w-[92%] max-w-md -translate-x-1/2 rounded-3xl border border-white/10 bg-[#0c0f1a]/88 px-3 py-2 text-[11px] text-slate-200 shadow-[0_16px_40px_rgba(0,0,0,0.4)] backdrop-blur-md md:hidden overflow-x-auto"
-        style={{ scrollbarWidth: "none" }}
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0c0f1a]/95 backdrop-blur-lg md:hidden"
       >
-        <div className="flex min-w-max items-center gap-2">
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="flex min-w-[70px] flex-col items-center gap-1 rounded-xl bg-white/10 px-2.5 py-1.5 text-slate-50 ring-1 ring-lime-300/50 transition hover:bg-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <span className="text-base">⏻</span>
-            <span className="text-[10px] leading-none">{loggingOut ? "Çıkılıyor" : "Çıkış"}</span>
-          </button>
-          {visibleNav.map((item) => {
-            const isActive = item.href === `/${segment ?? ""}` || (item.href === "/dashboard" && segment === null);
+        <div className="mx-auto flex max-w-md items-stretch justify-around px-1 py-1.5">
+          {visibleMobilePrimary.map((item) => {
+            const isActive =
+              item.href === `/${segment ?? ""}` || (item.href === "/dashboard" && segment === null);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex min-w-[70px] flex-col items-center gap-1 rounded-xl px-2.5 py-1.5 transition ${
-                  isActive ? "text-lime-200" : "text-slate-300 hover:text-white"
+                className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
+                  isActive
+                    ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
-                <span className="text-base">{item.icon}</span>
-                <span className="text-[10px] leading-none">{item.label}</span>
-                {isActive ? <span className="mt-1 h-0.5 w-6 rounded-full bg-lime-300/80" /> : null}
+                <span className="text-xl leading-none">{item.icon}</span>
+                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
               </Link>
             );
           })}
+
+          {/* "Daha" overflow menu */}
+          {visibleMobileSecondary.length > 0 && (
+            <div ref={moreRef} className="relative flex flex-1 flex-col items-center">
+              <button
+                type="button"
+                onClick={() => setMoreOpen((v) => !v)}
+                className={`flex w-full flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
+                  moreOpen || secondaryActive
+                    ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <span className="text-xl leading-none">···</span>
+                <span className="text-[10px] font-medium leading-tight">Daha</span>
+              </button>
+
+              {moreOpen && (
+                <div className="absolute bottom-full mb-2 right-0 min-w-[180px] rounded-xl border border-white/10 bg-[#0c0f1a]/95 p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.5)] backdrop-blur-lg">
+                  {visibleMobileSecondary.map((item) => {
+                    const isActive = item.href === `/${segment ?? ""}`;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMoreOpen(false)}
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                          isActive
+                            ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
+                            : "text-slate-300 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-base">{item.icon}</span>
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+
+                  {/* Logout inside overflow menu */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      handleLogout();
+                    }}
+                    disabled={loggingOut}
+                    className="mt-1 flex w-full items-center gap-2.5 rounded-lg border-t border-white/5 px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    <span className="text-base">⏻</span>
+                    {loggingOut ? "Çıkış yapılıyor..." : "Çıkış yap"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </nav>
     );
   };
 
-  const MobileFloatingLogout = () => (
-    <button
-      type="button"
-      onClick={handleLogout}
-      disabled={loggingOut}
-      className="fixed bottom-20 right-4 z-50 flex items-center gap-2 rounded-full bg-gradient-to-r from-lime-400 to-emerald-400 px-4 py-2 text-xs font-semibold text-slate-950 shadow-[0_10px_40px_rgba(74,222,128,0.45)] transition hover:scale-[1.02] md:hidden disabled:cursor-not-allowed disabled:opacity-75"
-    >
-      <span className="text-base">⏻</span>
-      {loggingOut ? "Çıkış yapılıyor..." : "Çıkış yap"}
-    </button>
-  );
-
   return (
     <>
       <div className="min-h-screen bg-slate-950 text-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 pb-24 md:flex-row md:gap-10 md:px-10 md:pb-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 pb-20 md:flex-row md:gap-10 md:px-10 md:pb-8">
           <aside className="sticky top-6 hidden h-fit w-64 flex-shrink-0 rounded-2xl border border-white/10 bg-white/5 px-5 py-5 shadow-lg md:block">
             <div className="mb-6 space-y-2">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-400">KaportaAPP</p>
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Kontrol Paneli</h2>
-                <span className="rounded-full bg-lime-400/20 px-3 py-1 text-[11px] font-semibold text-lime-100 ring-1 ring-lime-300/30">
-                  Canlı
-                </span>
-              </div>
+              <h2 className="text-lg font-semibold">Kontrol Paneli</h2>
             </div>
             <nav aria-label="Ana menü" className="space-y-1.5">
               {visibleNav.map((item) => (
@@ -173,12 +251,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             </nav>
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 shadow-inner">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Oturum</p>
                   <p className="text-sm font-semibold text-white">{roleLabel}</p>
-                  <p className="text-xs text-slate-400">KaportaAPP erişimi</p>
+                  <p className="truncate text-xs text-slate-400" title={email ?? undefined}>
+                    {email ?? "KaportaAPP erişimi"}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   <NotificationBell />
                   <LogoutButton />
                 </div>
@@ -187,12 +267,12 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </aside>
 
           <main className="flex-1">
-            <div className="mb-4 flex items-center justify-between md:hidden">
-              <div>
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-400">KaportaAPP</p>
-                <h2 className="text-lg font-semibold">Kontrol Paneli</h2>
+            <div className="mb-3 flex items-center justify-between gap-3 md:hidden">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">KaportaAPP</p>
+                <h2 className="text-base font-semibold leading-tight">Kontrol Paneli</h2>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-1.5">
                 <NotificationBell />
                 <LogoutButton compact />
               </div>
@@ -201,7 +281,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </main>
         </div>
       </div>
-      <MobileFloatingLogout />
       <MobileBottomNav />
     </>
   );

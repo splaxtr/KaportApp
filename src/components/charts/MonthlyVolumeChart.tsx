@@ -16,6 +16,7 @@ export default function MonthlyVolumeChart({ data }: Props) {
           <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip
             contentStyle={{ backgroundColor: "#1e293b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 12 }}
+            cursor={{ fill: "rgba(255,255,255,0.05)" }}
           />
           <Bar dataKey="count" name="Dosya" fill="#a3e635" radius={[4, 4, 0, 0]} />
         </BarChart>

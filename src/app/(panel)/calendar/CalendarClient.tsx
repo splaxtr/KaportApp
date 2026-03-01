@@ -153,18 +153,20 @@ export default function CalendarClient() {
             {MONTHS_TR[currentDate.getMonth()]} {currentDate.getFullYear()}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-white/10">
-            {(["month", "week", "day"] as View[]).map((v) => (
+            {(["month", "week", "day"] as View[]).map((v, idx, arr) => (
               <button key={v} type="button" onClick={() => setView(v)}
-                className={`px-3 py-1.5 text-xs ${view === v ? "bg-lime-400 text-slate-950 font-semibold" : "text-slate-300 hover:bg-white/10"}`}>
+                className={`px-3 py-1.5 text-xs ${idx === 0 ? "rounded-l-lg" : ""} ${idx === arr.length - 1 ? "rounded-r-lg" : ""} ${view === v ? "bg-lime-400 text-slate-950 font-semibold" : "text-slate-300 hover:bg-white/10"}`}>
                 {v === "month" ? "Ay" : v === "week" ? "Hafta" : "Gün"}
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => navigate(-1)} className="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-slate-300 hover:bg-white/10">←</button>
-          <button type="button" onClick={() => setCurrentDate(new Date())} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10">Bugün</button>
-          <button type="button" onClick={() => navigate(1)} className="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-slate-300 hover:bg-white/10">→</button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => navigate(-1)} className="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-slate-300 hover:bg-white/10">←</button>
+            <button type="button" onClick={() => setCurrentDate(new Date())} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10">Bugün</button>
+            <button type="button" onClick={() => navigate(1)} className="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-slate-300 hover:bg-white/10">→</button>
+          </div>
           <button type="button" onClick={() => setShowModal(true)}
             className="rounded-lg border border-lime-500 bg-lime-400 px-4 py-1.5 text-xs font-semibold text-slate-950 hover:shadow-[0_10px_30px_rgba(190,242,100,0.35)]">
             + Randevu
@@ -174,31 +176,73 @@ export default function CalendarClient() {
 
       {/* Month View */}
       {view === "month" && (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-          <div className="grid grid-cols-7 gap-px">
-            {DAYS_TR.map((d) => (
-              <div key={d} className="p-2 text-center text-xs font-semibold text-slate-400">{d}</div>
-            ))}
-            {getMonthDays().map((day, i) => {
-              const dayAppts = getAppointmentsForDate(day.date);
-              return (
-                <div key={i} className={`min-h-[80px] rounded-lg border p-1.5 text-xs ${
-                  day.isCurrentMonth ? "border-white/5 bg-white/[0.02]" : "border-transparent opacity-40"
-                } ${isToday(day.date) ? "ring-1 ring-lime-400/50" : ""}`}>
-                  <div className={`mb-1 text-right text-xs ${isToday(day.date) ? "font-bold text-lime-300" : "text-slate-400"}`}>
-                    {day.date.getDate()}
-                  </div>
-                  {dayAppts.slice(0, 2).map((a) => (
-                    <div key={a.id} className={`mb-0.5 truncate rounded px-1 py-0.5 text-[10px] ring-1 ${statusColors[a.status] || "bg-white/10 text-slate-300"}`}>
-                      {a.title}
+        <>
+          {/* Desktop: 7-column grid */}
+          <div className="hidden sm:block rounded-2xl border border-white/10 bg-white/5 p-3">
+            <div className="grid grid-cols-7 gap-px">
+              {DAYS_TR.map((d) => (
+                <div key={d} className="p-2 text-center text-xs font-semibold text-slate-400">{d}</div>
+              ))}
+              {getMonthDays().map((day, i) => {
+                const dayAppts = getAppointmentsForDate(day.date);
+                return (
+                  <div key={i} className={`min-h-[80px] rounded-lg border p-1.5 text-xs ${
+                    day.isCurrentMonth ? "border-white/5 bg-white/[0.02]" : "border-transparent opacity-40"
+                  } ${isToday(day.date) ? "ring-1 ring-lime-400/50" : ""}`}>
+                    <div className={`mb-1 text-right text-xs ${isToday(day.date) ? "font-bold text-lime-300" : "text-slate-400"}`}>
+                      {day.date.getDate()}
                     </div>
-                  ))}
-                  {dayAppts.length > 2 && <div className="text-[10px] text-slate-400">+{dayAppts.length - 2} daha</div>}
+                    {dayAppts.slice(0, 2).map((a) => (
+                      <div key={a.id} className={`mb-0.5 truncate rounded px-1 py-0.5 text-[10px] ring-1 ${statusColors[a.status] || "bg-white/10 text-slate-300"}`}>
+                        {a.title}
+                      </div>
+                    ))}
+                    {dayAppts.length > 2 && <div className="text-[10px] text-slate-400">+{dayAppts.length - 2} daha</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Mobile: stacked day list */}
+          <div className="sm:hidden space-y-1.5">
+            {getMonthDays().filter((day) => day.isCurrentMonth).map((day, i) => {
+              const dayAppts = getAppointmentsForDate(day.date);
+              const hasAppts = dayAppts.length > 0;
+              return (
+                <div key={i} className={`rounded-xl border px-3 py-2 ${
+                  isToday(day.date)
+                    ? "border-lime-400/40 bg-lime-400/5 ring-1 ring-lime-400/30"
+                    : hasAppts
+                      ? "border-white/10 bg-white/5"
+                      : "border-white/5 bg-white/[0.02]"
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-sm font-medium ${isToday(day.date) ? "text-lime-300" : "text-white"}`}>
+                      {day.date.getDate()} {MONTHS_TR[day.date.getMonth()].slice(0, 3)},{" "}
+                      {day.date.toLocaleDateString("tr-TR", { weekday: "short" })}
+                    </span>
+                    {hasAppts && (
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-300">
+                        {dayAppts.length} randevu
+                      </span>
+                    )}
+                  </div>
+                  {hasAppts && (
+                    <div className="mt-1.5 space-y-1">
+                      {dayAppts.map((a) => (
+                        <div key={a.id} className={`truncate rounded-lg px-2 py-1 text-xs ring-1 ${statusColors[a.status] || "bg-white/10 text-slate-300"}`}>
+                          {new Date(a.date).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                          {" - "}{a.title}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-        </div>
+        </>
       )}
 
       {/* Week / Day View */}
@@ -292,7 +336,7 @@ export default function CalendarClient() {
               <div>
                 <label htmlFor="apt-type" className="mb-1 block text-xs text-slate-400">Tür</label>
                 <select id="apt-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white">
+                  className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white [&>option]:bg-slate-800 [&>option]:text-white">
                   {Object.entries(typeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </div>

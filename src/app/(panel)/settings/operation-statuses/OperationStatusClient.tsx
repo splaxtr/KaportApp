@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { MobileCard, MobileCardList, CardAction } from "@/components/MobileCard";
 
 type Status = { id: number; label: string };
 
@@ -111,7 +112,7 @@ export default function OperationStatusClient() {
           </div>
         </form>
 
-        <div className="md:col-span-2 overflow-hidden rounded-xl border border-white/10">
+        <div className="md:col-span-2 hidden md:block overflow-hidden rounded-xl border border-white/10">
           <div className="overflow-x-auto">
             <table className="min-w-[520px] divide-y divide-white/10 text-sm">
             <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
@@ -155,6 +156,27 @@ export default function OperationStatusClient() {
             </tbody>
           </table>
           </div>
+        </div>
+
+        {/* Mobile card view */}
+        <div className="md:col-span-2 md:hidden">
+          <MobileCardList
+            empty={statuses.length === 0}
+            emptyMessage="Kayıt yok."
+          >
+            {statuses.map((s) => (
+              <MobileCard
+                key={s.id}
+                title={s.label}
+                actions={
+                  <>
+                    <CardAction onClick={() => startEdit(s)}>Düzenle</CardAction>
+                    <CardAction variant="danger" onClick={() => remove(s.id)}>Sil</CardAction>
+                  </>
+                }
+              />
+            ))}
+          </MobileCardList>
         </div>
       </div>
     </div>

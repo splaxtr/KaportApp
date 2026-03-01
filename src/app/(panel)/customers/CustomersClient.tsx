@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, FormEvent } from "react";
+import { MobileCard, MobileCardList, CardAction, CardField } from "@/components/MobileCard";
 
 type Customer = {
   id: number;
@@ -184,7 +185,7 @@ export default function CustomersClient() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
+      <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
         <div className="overflow-x-auto">
           <table className="min-w-[720px] divide-y divide-white/10 text-sm">
           <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
@@ -245,6 +246,37 @@ export default function CustomersClient() {
         </table>
         </div>
       </div>
+
+      <MobileCardList loading={loading} empty={!loading && filtered.length === 0} emptyMessage="Kayıt bulunamadı." loadingMessage="Yükleniyor...">
+        {filtered.map((c) => (
+          <MobileCard
+            key={c.id}
+            title={c.fullName}
+            fields={[
+              { label: "E-posta", value: c.email ?? "—" },
+              { label: "Telefon", value: c.phones?.[0]?.phone ?? "—" },
+              { label: "Kayıt", value: new Date(c.createdAt).toLocaleDateString("tr-TR") },
+            ]}
+            actions={
+              <>
+                <Link
+                  href={`/customers/${c.id}`}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium transition border border-white/10 text-slate-200 hover:border-lime-300/70 hover:text-white"
+                >
+                  Detay
+                </Link>
+                <CardAction
+                  variant="danger"
+                  onClick={() => onDelete(c.id)}
+                  disabled={deletingId === c.id}
+                >
+                  {deletingId === c.id ? "Siliniyor..." : "Sil"}
+                </CardAction>
+              </>
+            }
+          />
+        ))}
+      </MobileCardList>
 
       {showModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">

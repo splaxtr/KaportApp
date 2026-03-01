@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
+import { MobileCard, MobileCardList, CardAction } from "@/components/MobileCard";
 
 type Status = { id: number; label: string; color: string | null; sortOrder: number };
 
@@ -150,7 +151,7 @@ export default function PartStatusClient() {
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
+      <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
         <div className="overflow-x-auto">
           <table className="min-w-[520px] divide-y divide-white/10 text-sm">
           <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
@@ -205,6 +206,42 @@ export default function PartStatusClient() {
         </table>
         </div>
       </div>
+
+      {/* Mobile card view */}
+      <MobileCardList
+        loading={loading}
+        empty={!loading && statuses.length === 0}
+        emptyMessage="Kayıt bulunamadı."
+        loadingMessage="Yükleniyor..."
+      >
+        {statuses.map((s) => (
+          <MobileCard
+            key={s.id}
+            title={s.label}
+            fields={[
+              {
+                label: "Renk",
+                value: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      className="h-3 w-3 rounded-full"
+                      style={{ backgroundColor: s.color ?? undefined }}
+                    />
+                    {s.color ?? "—"}
+                  </span>
+                ),
+              },
+              { label: "Sıra", value: s.sortOrder },
+            ]}
+            actions={
+              <>
+                <CardAction onClick={() => startEdit(s)}>Düzenle</CardAction>
+                <CardAction variant="danger" onClick={() => onDelete(s.id)}>Sil</CardAction>
+              </>
+            }
+          />
+        ))}
+      </MobileCardList>
     </div>
   );
 }

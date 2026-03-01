@@ -14,8 +14,7 @@ export default function StatusPieChart({ data }: Props) {
       <h3 className="mb-3 text-sm font-semibold text-white">Durum Dağılımı</h3>
       <ResponsiveContainer width="100%" height={200}>
         <PieChart>
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          <Pie data={data} dataKey="count" nameKey="label" cx="50%" cy="50%" outerRadius={70} label={(props: any) => `${props.label}: ${props.count}`}>
+          <Pie data={data} dataKey="count" nameKey="label" cx="50%" cy="50%" outerRadius={70} label={false}>
             {data.map((_, i) => (
               <Cell key={i} fill={COLORS[i % COLORS.length]} />
             ))}

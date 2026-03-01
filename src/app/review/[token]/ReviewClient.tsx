@@ -49,14 +49,28 @@ export default function ReviewClient({ token }: { token: string }) {
           <h1 className="text-2xl font-semibold">Sigorta inceleme</h1>
           <p className="text-sm text-slate-300">Bu sayfaya erişmek için tek kullanımlık anahtar girin.</p>
           <form className="mt-4 space-y-3" onSubmit={submit}>
-            <input
-              type="text"
-              placeholder="Güvenlik anahtarı"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              className="w-full rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:border-lime-300/70 focus:outline-none"
-              required
-            />
+            <div className="relative">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <input
+                type="text"
+                placeholder="Güvenlik anahtarı"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                className="w-full rounded-lg border border-white/15 bg-white/10 py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:border-lime-300/70 focus:outline-none"
+                required
+              />
+            </div>
             {error ? <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">{error}</div> : null}
             <button
               type="submit"
@@ -103,16 +117,42 @@ export default function ReviewClient({ token }: { token: string }) {
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg">
         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Parçalar</p>
-        <div className="mt-2 space-y-1 text-sm text-slate-200">
-          {data.parts.length === 0 ? "Parça yok." : data.parts.map((p) => `${p.name} (${p.quantity})`).join(", ")}
-        </div>
+        {data.parts.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-200">Parça yok.</p>
+        ) : (
+          <table className="mt-3 w-full text-sm text-slate-200">
+            <thead>
+              <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wider text-slate-400">
+                <th className="pb-2">Parça adı</th>
+                <th className="pb-2 text-right">Adet</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {data.parts.map((p) => (
+                <tr key={p.id}>
+                  <td className="py-2">{p.name}</td>
+                  <td className="py-2 text-right font-medium text-lime-300">{p.quantity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg">
         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">İşlemler</p>
-        <div className="mt-2 space-y-1 text-sm text-slate-200">
-          {data.operations.length === 0 ? "İşlem yok." : data.operations.map((o) => o.title).join(", ")}
-        </div>
+        {data.operations.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-200">İşlem yok.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-white/5 text-sm text-slate-200">
+            {data.operations.map((o) => (
+              <li key={o.id} className="flex items-center gap-2 py-2">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-lime-300" />
+                {o.title}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg">
@@ -129,7 +169,7 @@ export default function ReviewClient({ token }: { token: string }) {
                 rel="noreferrer"
                 className="block overflow-hidden rounded-xl border border-white/10 bg-white/5"
               >
-                <div className="relative h-32 bg-black/20">
+                <div className="relative h-48 bg-black/20">
                   <Image src={ph.url} alt={ph.title ?? "Fotoğraf"} className="object-cover" fill unoptimized />
                 </div>
                 <div className="px-3 py-2 text-sm text-slate-200">

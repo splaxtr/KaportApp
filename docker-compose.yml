@@ -1,82 +1,23 @@
 services:
   app:
     build: .
-    env_file:
-      - .env.docker
     environment:
-      PORT: 3100
-      HOST: 0.0.0.0
-      UPLOAD_DIR: /app/uploads
-      LOG_DIR: /app/logs
-      REDIS_URL: redis://redis:6379
-      TRUST_PROXY: "true"
-    expose:
-      - "3100"
-    depends_on:
-      - vurthex-db
-      - redis
-    restart: unless-stopped
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=${REDIS_URL}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_NAME=${ADMIN_NAME:-System Admin}
+      - UPLOAD_DIR=/app/uploads
+      - UPLOAD_URL_PREFIX=/api/uploads
+      - LOG_DIR=/app/logs
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - HOSTNAME=0.0.0.0
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs
-    networks:
-      - default
-      - landing_vurthex-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.kucukaga.rule=Host(`kucukaga.vurthex.com`)"
-      - "traefik.http.routers.kucukaga.entrypoints=websecure"
-      - "traefik.http.routers.kucukaga.tls=true"
-      - "traefik.http.routers.kucukaga.tls.certresolver=letsencrypt"
-      - "traefik.http.services.kucukaga.loadbalancer.server.port=3100"
-      - "traefik.docker.network=landing_vurthex-network"
-      # Security headers
-      - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.X-Content-Type-Options=nosniff"
-      - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.X-Frame-Options=DENY"
-      - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.X-XSS-Protection=1; mode=block"
-      - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Referrer-Policy=strict-origin-when-cross-origin"
-      - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Permissions-Policy=camera=(), microphone=(), geolocation=()"
-      - "traefik.http.middlewares.kucukaga-security.headers.customResponseHeaders.Strict-Transport-Security=max-age=31536000; includeSubDomains"
-      # CSP middleware.ts tarafından nonce-based olarak dinamik ayarlanıyor
-      - "traefik.http.routers.kucukaga.middlewares=kucukaga-security"
-
-  vurthex-db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER_FILE: /run/secrets/db_user
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-      POSTGRES_DB: kaportapp_db
-    secrets:
-      - db_user
-      - db_password
-    volumes:
-      - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-changeme_redis_secret}
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme_redis_secret}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-secrets:
-  db_user:
-    file: ./secrets/db_user.txt
-  db_password:
-    file: ./secrets/db_password.txt
 
 volumes:
-  pgdata:
   uploads:
   logs:
-  redis_data:
-
-networks:
-  landing_vurthex-network:
-    external: true

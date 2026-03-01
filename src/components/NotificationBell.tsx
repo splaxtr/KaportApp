@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
 type Notification = {
   id: number;
@@ -17,6 +17,7 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchCount = useCallback(async () => {
     try {
@@ -50,13 +51,25 @@ export default function NotificationBell() {
     return () => clearInterval(interval);
   }, [fetchCount]);
 
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
   const handleToggle = () => {
     if (!open) fetchNotifications();
     setOpen(!open);
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={handleToggle}
@@ -72,7 +85,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-white/10 bg-slate-900 shadow-2xl">
+        <div className="absolute right-0 top-full z-50 mt-2 w-80 min-w-0 max-w-[calc(100vw-2rem)] rounded-xl border border-white/10 bg-slate-900 shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <h3 className="text-sm font-semibold text-white">Bildirimler</h3>
             {count > 0 && (
@@ -85,7 +98,15 @@ export default function NotificationBell() {
             {loading ? (
               <div className="p-4 text-center text-xs text-slate-400">Yükleniyor...</div>
             ) : notifications.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-400">Bildirim yok</div>
+              <div className="flex flex-col items-center gap-3 px-4 py-8">
+                <svg className="h-10 w-10 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+                <div className="text-center">
+                  <p className="text-xs font-medium text-slate-400">Bildirim yok</p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">Yeni bildirimler burada görünecek</p>
+                </div>
+              </div>
             ) : (
               notifications.map((n) => (
                 <div key={n.id} className={`border-b border-white/5 px-4 py-3 ${!n.readAt ? "bg-white/[0.03]" : ""}`}>

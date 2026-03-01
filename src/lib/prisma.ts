@@ -22,7 +22,12 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // Reuse pool and client in dev to avoid exhausting DB connections during HMR.
-const pool = globalForPrisma.pool ?? new Pool({ connectionString });
+const pool = globalForPrisma.pool ?? new Pool({
+  connectionString,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+});
 const prisma: PrismaClientInstance =
   globalForPrisma.prisma ?? new PrismaClient({ adapter: new PrismaPg(pool) });
 

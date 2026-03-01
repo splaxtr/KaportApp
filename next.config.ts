@@ -5,11 +5,15 @@ const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
   register: true,
+  cacheStartUrl: false,
+  dynamicStartUrl: false,
 });
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  turbopack: {},
+  turbopack: {
+    root: process.cwd(),
+  },
 };
 
 export default withPWA(nextConfig);

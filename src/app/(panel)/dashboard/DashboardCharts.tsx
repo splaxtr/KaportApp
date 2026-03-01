@@ -26,13 +26,29 @@ export default function DashboardCharts() {
     return (
       <div className="grid gap-4 md:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse rounded-xl border border-white/10 bg-white/5 p-4 h-[260px]" />
+          <div key={i} className="animate-pulse rounded-xl border border-white/10 bg-white/5 p-4 h-[260px]">
+            <div className="h-4 w-1/3 rounded bg-white/10 mb-4" />
+            <div className="h-full rounded-lg bg-white/5" />
+          </div>
         ))}
       </div>
     );
   }
 
   if (!data) return null;
+
+  const isEmpty =
+    data.monthlyVolume.length === 0 &&
+    data.statusDistribution.length === 0 &&
+    data.revenueCost.length === 0;
+
+  if (isEmpty) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-white/5 px-6 py-10 text-center text-sm text-slate-400">
+        Henüz yeterli veri yok
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-3">

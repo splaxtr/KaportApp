@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { MobileCard, MobileCardList, CardAction } from "@/components/MobileCard";
 
 type ReviewLink = {
   id: number;
@@ -154,7 +155,8 @@ export default function ReviewLinksClient() {
       ) : links.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-center text-sm text-slate-300">Link yok.</div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
+        <>
+        <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
           <div className="overflow-x-auto">
             <table className="min-w-[760px] divide-y divide-white/10 text-sm">
             <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
@@ -238,6 +240,63 @@ export default function ReviewLinksClient() {
           </table>
           </div>
         </div>
+
+        {/* Mobile card view */}
+        <MobileCardList empty={links.length === 0} emptyMessage="Link yok.">
+          {links.map((link) => (
+            <MobileCard
+              key={link.id}
+              title={link.plate}
+              subtitle={`Token: ${link.token.length > 20 ? link.token.slice(0, 20) + "..." : link.token}`}
+              badge={{
+                text: link.status,
+                className:
+                  link.status === "active"
+                    ? "bg-lime-400 text-slate-950"
+                    : "bg-red-400 text-slate-950",
+              }}
+              fields={[
+                { label: "Dosya ID", value: link.fileId },
+                {
+                  label: "Geçerlilik",
+                  value: link.expiresAt
+                    ? new Date(link.expiresAt).toLocaleString("tr-TR")
+                    : "Süre yok",
+                },
+                {
+                  label: "Anahtarlar",
+                  value: link.keys && link.keys.length > 0 ? link.keys.join(", ") : "—",
+                },
+              ]}
+              actions={
+                <>
+                  <CardAction
+                    onClick={() =>
+                      navigator.clipboard.writeText(
+                        `${window.location.origin}/review/${link.token}`
+                      )
+                    }
+                  >
+                    Kopyala
+                  </CardAction>
+                  {link.status === "active" ? (
+                    <CardAction variant="warning" onClick={() => revoke(link.id)}>
+                      İptal
+                    </CardAction>
+                  ) : (
+                    <CardAction variant="success" onClick={() => restore(link.id)}>
+                      Aktif et
+                    </CardAction>
+                  )}
+                  <CardAction variant="danger" onClick={() => remove(link.id)}>
+                    Sil
+                  </CardAction>
+                </>
+              }
+            />
+          ))}
+        </MobileCardList>
+        </>
       )}
     </div>
   );

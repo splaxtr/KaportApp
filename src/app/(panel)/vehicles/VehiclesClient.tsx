@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { normalizePlate } from "@/lib/plate";
+import { MobileCard, MobileCardList, CardAction } from "@/components/MobileCard";
 
 type Vehicle = {
   id: number;
