@@ -24,9 +24,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Non-root kullanıcı oluştur
+# Non-root kullanıcı oluştur (ingroup ile primary group ayarla)
 RUN addgroup --system --gid 1001 appgroup && \
-    adduser --system --uid 1001 -G appgroup appuser
+    adduser --system --uid 1001 --ingroup appgroup appuser
 
 # Copy only the necessary files from the builder
 COPY --from=builder /app/package*.json ./
