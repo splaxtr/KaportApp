@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 
@@ -35,8 +35,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
 
     return json({ id: updated.id, label: updated.label, color: updated.color, sortOrder: updated.sortOrder });
   } catch (error) {
-    logger.error("Operation status update error", error as Error, { path: "/api/operation-statuses/[id]", method: "PATCH" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/operation-statuses/[id]", method: "PATCH" });
   }
 }, { requiredPermissions: ["operations.manage"] });
 
@@ -52,7 +51,6 @@ export const DELETE = withAuth<Params>(async (_req: NextRequest, { params }) => 
     await prisma.operationStatus.update({ where: { id: statusId }, data: { deletedAt: new Date() } });
     return json({ ok: true });
   } catch (error) {
-    logger.error("Operation status delete error", error as Error, { path: "/api/operation-statuses/[id]", method: "DELETE" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/operation-statuses/[id]", method: "DELETE" });
   }
 }, { requiredPermissions: ["operations.manage"] });

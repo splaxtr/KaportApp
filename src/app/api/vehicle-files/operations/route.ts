@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 
@@ -39,8 +39,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       })),
     );
   } catch (error) {
-    logger.error("Vehicle file operations fetch error", error as Error, { path: "/api/vehicle-files/operations", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicle-files/operations", method: "GET" });
   }
 }, { requiredPermissions: ["operations.manage"] });
 
@@ -81,7 +80,6 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 },
     );
   } catch (error) {
-    logger.error("Vehicle file operation create error", error as Error, { path: "/api/vehicle-files/operations", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicle-files/operations", method: "POST" });
   }
 }, { requiredPermissions: ["operations.manage"] });

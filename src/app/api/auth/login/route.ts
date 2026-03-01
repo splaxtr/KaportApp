@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, serverError } from "@/lib/http";
+import { badRequest, handleApiError } from "@/lib/http";
 import { createToken } from "@/lib/auth";
 import { withLoginRateLimit } from "@/lib/api-guard";
 import { loginSchema, validate } from "@/lib/validations";
@@ -114,8 +114,12 @@ async function loginHandler(req: NextRequest) {
 
     return response;
   } catch (error) {
-    logger.error("Login API error", error as Error, { ip, userAgent });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), {
+      path: "/api/auth/login",
+      method: "POST",
+      ip,
+      userAgent,
+    });
   }
 }
 

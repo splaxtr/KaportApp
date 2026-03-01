@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-guard";
-import { serverError } from "@/lib/http";
+import { handleApiError } from "@/lib/http";
 import { logger } from "@/lib/logger";
 
 export const GET = withAuth(async () => {
@@ -95,7 +95,6 @@ export const GET = withAuth(async () => {
       revenueCost: revenueCostData,
     });
   } catch (error) {
-    logger.error("Dashboard stats error", error as Error, { path: "/api/dashboard/stats", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/dashboard/stats", method: "GET" });
   }
 });

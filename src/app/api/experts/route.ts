@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, serverError } from "@/lib/http";
+import { badRequest, json, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 
@@ -46,8 +46,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       })),
     );
   } catch (error) {
-    logger.error("Experts fetch error", error as Error, { path: "/api/experts", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/experts", method: "GET" });
   }
 }, { requiredPermissions: ["experts.manage"] });
 
@@ -85,7 +84,6 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 },
     );
   } catch (error) {
-    logger.error("Expert create error", error as Error, { path: "/api/experts", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/experts", method: "POST" });
   }
 }, { requiredPermissions: ["experts.manage"] });

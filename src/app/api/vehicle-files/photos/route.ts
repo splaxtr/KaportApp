@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 import { uploadBase64, uploadFile } from "@/lib/storage";
@@ -31,8 +31,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       })),
     );
   } catch (error) {
-    logger.error("Vehicle file photos fetch error", error as Error, { path: "/api/vehicle-files/photos", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicle-files/photos", method: "GET" });
   }
 }, { requiredPermissions: ["photos.manage"] });
 
@@ -98,7 +97,6 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return json(createdRecords, { status: 201 });
   } catch (error) {
-    logger.error("Vehicle file photo upload error", error as Error, { path: "/api/vehicle-files/photos", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicle-files/photos", method: "POST" });
   }
 }, { requiredPermissions: ["photos.manage"] });

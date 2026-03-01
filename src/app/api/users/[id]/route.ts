@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 import { getAuditContext } from "@/lib/audit";
@@ -38,8 +38,7 @@ export const DELETE = withAuth<Params>(
 
       return json({ ok: true });
     } catch (error) {
-      logger.error("User delete error", error as Error, { path: "/api/users/[id]", method: "DELETE" });
-      return serverError();
+      return handleApiError(error, logger.error.bind(logger), { path: "/api/users/[id]", method: "DELETE" });
     }
   },
   { requireAdmin: true, requiredPermissions: ["users.manage"] }
@@ -85,8 +84,7 @@ export const PATCH = withAuth<Params>(
         createdAt: updated.createdAt,
       });
     } catch (error) {
-      logger.error("User update error", error as Error, { path: "/api/users/[id]", method: "PATCH" });
-      return serverError();
+      return handleApiError(error, logger.error.bind(logger), { path: "/api/users/[id]", method: "PATCH" });
     }
   },
   { requireAdmin: true, requiredPermissions: ["users.manage"] }

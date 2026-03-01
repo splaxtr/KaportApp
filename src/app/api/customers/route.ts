@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, serverError } from "@/lib/http";
+import { badRequest, json, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { createCustomerSchema, validate } from "@/lib/validations";
 import { logger } from "@/lib/logger";
@@ -45,8 +45,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       }))
     );
   } catch (error) {
-    logger.error("Customer list error", error as Error, { path: "/api/customers", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers", method: "GET" });
   }
 }, { requiredPermissions: ["customers.manage"] });
 
@@ -115,7 +114,6 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 }
     );
   } catch (error) {
-    logger.error("Customer create error", error as Error, { path: "/api/customers", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers", method: "POST" });
   }
 }, { requiredPermissions: ["customers.manage"] });

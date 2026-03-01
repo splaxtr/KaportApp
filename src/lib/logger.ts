@@ -24,10 +24,13 @@ interface LogContext {
 }
 
 // Klasör oluştur
+let logDirChecked = false;
 async function ensureLogDir(): Promise<void> {
+  if (logDirChecked) return;
   if (!existsSync(LOG_DIR)) {
     await mkdir(LOG_DIR, { recursive: true });
   }
+  logDirChecked = true;
 }
 
 // Log dosya adı (günlük)
@@ -40,6 +43,32 @@ function getLogFileName(): string {
 function getErrorLogFileName(): string {
   const date = new Date().toISOString().split("T")[0];
   return path.join(LOG_DIR, `error-${date}.log`);
+}
+
+// Hata türünü belirle
+function classifyError(error: Error): string {
+  const msg = error.message || "";
+  const name = error.name || "";
+
+  if (name.includes("PrismaClient") || msg.includes("prisma")) {
+    if (msg.includes("Authentication failed")) return "DB_AUTH_FAILED";
+    if (msg.includes("connect") || msg.includes("Connection")) return "DB_CONNECTION_ERROR";
+    if (msg.includes("timeout") || msg.includes("Timed out")) return "DB_TIMEOUT";
+    return "DB_ERROR";
+  }
+  if (msg.includes("Redis") || msg.includes("redis") || msg.includes("ECONNREFUSED")) {
+    return "REDIS_ERROR";
+  }
+  if (msg.includes("JWT") || msg.includes("jwt") || msg.includes("token")) {
+    return "JWT_ERROR";
+  }
+  if (msg.includes("ENOENT") || msg.includes("EACCES") || msg.includes("Permission denied")) {
+    return "FILESYSTEM_ERROR";
+  }
+  if (msg.includes("fetch") || msg.includes("ETIMEDOUT") || msg.includes("ENOTFOUND")) {
+    return "NETWORK_ERROR";
+  }
+  return "UNKNOWN_ERROR";
 }
 
 // Log formatla
@@ -62,6 +91,7 @@ function formatLog(
 
   if (error) {
     logEntry.error = {
+      type: classifyError(error),
       name: error.name,
       message: error.message,
       stack: error.stack,
@@ -69,6 +99,39 @@ function formatLog(
   }
 
   return JSON.stringify(logEntry) + "\n";
+}
+
+// Console log formatla (okunabilir)
+function formatConsole(
+  level: LogLevel,
+  message: string,
+  context?: LogContext,
+  error?: Error
+): string {
+  const time = new Date().toISOString().slice(11, 23);
+  let line = `[${time}] [${level.toUpperCase()}] ${message}`;
+
+  if (context) {
+    const parts: string[] = [];
+    if (context.ip) parts.push(`ip=${context.ip}`);
+    if (context.email) parts.push(`email=${context.email}`);
+    if (context.path) parts.push(`path=${context.path}`);
+    if (context.userId) parts.push(`uid=${context.userId}`);
+    if (context.method) parts.push(`method=${context.method}`);
+    // Kalan context key'leri
+    for (const [k, v] of Object.entries(context)) {
+      if (!["ip", "email", "path", "userId", "method", "userAgent", "action", "statusCode", "duration"].includes(k)) {
+        parts.push(`${k}=${v}`);
+      }
+    }
+    if (parts.length > 0) line += ` | ${parts.join(" ")}`;
+  }
+
+  if (error) {
+    line += ` | [${classifyError(error)}] ${error.name}: ${error.message}`;
+  }
+
+  return line;
 }
 
 // Seviye kontrolü
@@ -85,27 +148,23 @@ async function writeLog(
 ): Promise<void> {
   if (!shouldLog(level)) return;
 
+  // Her zaman console'a yaz — docker logs ile görülebilir
+  const consoleMethod = level === "error" ? console.error : level === "warn" ? console.warn : console.log;
+  consoleMethod(formatConsole(level, message, context, error));
+
+  // Dosyaya yaz
   try {
     await ensureLogDir();
     const logLine = formatLog(level, message, context, error);
 
-    // Ana log dosyasına yaz
     await appendFile(getLogFileName(), logLine);
 
-    // Error seviyesinde ayrı dosyaya da yaz
     if (level === "error") {
       await appendFile(getErrorLogFileName(), logLine);
     }
-
-    // Console'a da yaz (development için)
-    if (process.env.NODE_ENV !== "production") {
-      const consoleMethod = level === "error" ? console.error : console.log;
-      consoleMethod(`[${level.toUpperCase()}] ${message}`, context || "");
-    }
   } catch (e) {
-    // Log yazılamadıysa console'a yaz
-    console.error("Logger error:", e);
-    console.error("Original log:", { level, message, context, error });
+    // Dosya yazılamadıysa sadece console'a bilgi ver (zaten üstte console'a yazdık)
+    console.error("[LOGGER] Dosyaya yazılamadı:", (e as Error).message);
   }
 }
 

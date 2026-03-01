@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 import { getAuditContext } from "@/lib/audit";
@@ -54,8 +54,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
       status: updated.status?.label ?? "",
     });
   } catch (error) {
-    logger.error("Operation update error", error as Error, { path: "/api/operations/[id]", method: "PATCH" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/operations/[id]", method: "PATCH" });
   }
 }, { requiredPermissions: ["operations.manage"] });
 
@@ -74,7 +73,6 @@ export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }
 
     return json({ ok: true });
   } catch (error) {
-    logger.error("Operation delete error", error as Error, { path: "/api/operations/[id]", method: "DELETE" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/operations/[id]", method: "DELETE" });
   }
 }, { requiredPermissions: ["operations.manage"] });

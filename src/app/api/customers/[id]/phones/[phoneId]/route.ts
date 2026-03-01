@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 
@@ -36,8 +36,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
 
     return json(updated);
   } catch (error) {
-    logger.error("Customer phone update error", error as Error, { path: "/api/customers/[id]/phones/[phoneId]", method: "PATCH" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers/[id]/phones/[phoneId]", method: "PATCH" });
   }
 }, { requiredPermissions: ["customers.manage"] });
 
@@ -60,7 +59,6 @@ export const DELETE = withAuth<Params>(async (_req: NextRequest, { params }) => 
 
     return json({ ok: true });
   } catch (error) {
-    logger.error("Customer phone delete error", error as Error, { path: "/api/customers/[id]/phones/[phoneId]", method: "DELETE" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers/[id]/phones/[phoneId]", method: "DELETE" });
   }
 }, { requiredPermissions: ["customers.manage"] });

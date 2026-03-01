@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 import { getAuditContext } from "@/lib/audit";
@@ -65,8 +65,7 @@ export const GET = withAuth<Params>(async (_req: NextRequest, { params }) => {
       createdAt: customer.createdAt,
     });
   } catch (error) {
-    logger.error("Customer fetch error", error as Error, { path: "/api/customers/[id]", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers/[id]", method: "GET" });
   }
 }, { requiredPermissions: ["customers.manage"] });
 
@@ -170,8 +169,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
       addresses: refreshed?.addresses ?? [],
     });
   } catch (error) {
-    logger.error("Customer update error", error as Error, { path: "/api/customers/[id]", method: "PATCH" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers/[id]", method: "PATCH" });
   }
 }, { requiredPermissions: ["customers.manage"] });
 
@@ -195,7 +193,6 @@ export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }
 
     return json({ ok: true });
   } catch (error) {
-    logger.error("Customer delete error", error as Error, { path: "/api/customers/[id]", method: "DELETE" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers/[id]", method: "DELETE" });
   }
 }, { requiredPermissions: ["customers.manage"] });

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 
@@ -36,8 +36,7 @@ export const GET = withAuth<Params>(async (_req: NextRequest, { params }) => {
       })),
     );
   } catch (error) {
-    logger.error("Customer notes fetch error", error as Error, { path: "/api/customers/[id]/notes", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers/[id]/notes", method: "GET" });
   }
 }, { requiredPermissions: ["customers.manage"] });
 
@@ -72,7 +71,6 @@ export const POST = withAuth<Params>(async (req: NextRequest, { params, user }) 
       { status: 201 },
     );
   } catch (error) {
-    logger.error("Customer note create error", error as Error, { path: "/api/customers/[id]/notes", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers/[id]/notes", method: "POST" });
   }
 }, { requiredPermissions: ["customers.manage"] });

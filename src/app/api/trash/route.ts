@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, serverError } from "@/lib/http";
+import { badRequest, json, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { deleteFile } from "@/lib/storage";
 import { logger } from "@/lib/logger";
@@ -80,8 +80,7 @@ export const GET = withAuth(async () => {
 
     return json(items);
   } catch (error) {
-    logger.error("Trash list error", error as Error, { path: "/api/trash", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/trash", method: "GET" });
   }
 }, { requireAdmin: true });
 
@@ -213,7 +212,6 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
     return json({ ok: true });
   } catch (error) {
-    logger.error("Trash action error", error as Error, { path: "/api/trash", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/trash", method: "POST" });
   }
 }, { requireAdmin: true });

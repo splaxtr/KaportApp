@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-guard";
-import { serverError } from "@/lib/http";
+import { handleApiError } from "@/lib/http";
 import { logger } from "@/lib/logger";
 
 // GET: Kullanıcının bildirimlerini listele
@@ -15,8 +15,7 @@ export const GET = withAuth(async (req: NextRequest, { user }) => {
     });
     return NextResponse.json(notifications);
   } catch (error) {
-    logger.error("Notifications fetch error", error as Error, { path: "/api/notifications", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/notifications", method: "GET" });
   }
 });
 
@@ -42,7 +41,6 @@ export const PATCH = withAuth(async (req: NextRequest, { user }) => {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("Notifications update error", error as Error, { path: "/api/notifications", method: "PATCH" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/notifications", method: "PATCH" });
   }
 });

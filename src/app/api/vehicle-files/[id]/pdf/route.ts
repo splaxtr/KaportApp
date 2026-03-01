@@ -4,7 +4,7 @@ import React from "react";
 
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-guard";
-import { notFound, serverError } from "@/lib/http";
+import { notFound, handleApiError } from "@/lib/http";
 import { logger } from "@/lib/logger";
 import { QuoteDocument } from "@/lib/pdf/quote";
 import { InvoiceDocument } from "@/lib/pdf/invoice";
@@ -111,7 +111,6 @@ export const GET = withAuth(async (req: NextRequest, { params }) => {
       },
     });
   } catch (error) {
-    logger.error("PDF generation error", error as Error, { path: "/api/vehicle-files/[id]/pdf", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicle-files/[id]/pdf", method: "GET" });
   }
 }, { requiredPermissions: ["vehicleFiles.manage"] });

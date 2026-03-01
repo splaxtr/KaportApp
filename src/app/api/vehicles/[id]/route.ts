@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { normalizePlate } from "@/lib/plate";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
@@ -50,8 +50,7 @@ export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }
 
     return json({ ok: true });
   } catch (error) {
-    logger.error("Vehicle delete error", error as Error, { path: "/api/vehicles/[id]", method: "DELETE" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicles/[id]", method: "DELETE" });
   }
 }, { requiredPermissions: ["vehicles.manage"] });
 
@@ -87,7 +86,6 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
       plateNormalized: updated.plateNormalized,
     });
   } catch (error) {
-    logger.error("Vehicle update error", error as Error, { path: "/api/vehicles/[id]", method: "PATCH" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicles/[id]", method: "PATCH" });
   }
 }, { requiredPermissions: ["vehicles.manage"] });

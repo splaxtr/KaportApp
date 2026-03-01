@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, serverError } from "@/lib/http";
+import { badRequest, json, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 
@@ -21,8 +21,7 @@ export const GET = withAuth(async () => {
       })),
     );
   } catch (error) {
-    logger.error("Part statuses fetch error", error as Error, { path: "/api/part-statuses", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/part-statuses", method: "GET" });
   }
 }, { requiredPermissions: ["parts.manage"] });
 
@@ -48,7 +47,6 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 },
     );
   } catch (error) {
-    logger.error("Part status create error", error as Error, { path: "/api/part-statuses", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/part-statuses", method: "POST" });
   }
 }, { requiredPermissions: ["parts.manage"] });

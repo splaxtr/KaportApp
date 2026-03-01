@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-guard";
-import { serverError } from "@/lib/http";
+import { handleApiError } from "@/lib/http";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { validate } from "@/lib/validations";
@@ -42,8 +42,7 @@ export const GET = withAuth(async (req: NextRequest) => {
 
     return NextResponse.json(appointments);
   } catch (error) {
-    logger.error("Appointments fetch error", error as Error, { path: "/api/appointments", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/appointments", method: "GET" });
   }
 });
 
@@ -76,7 +75,6 @@ export const POST = withAuth(async (req: NextRequest) => {
 
     return NextResponse.json(appointment, { status: 201 });
   } catch (error) {
-    logger.error("Appointment create error", error as Error, { path: "/api/appointments", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/appointments", method: "POST" });
   }
 });

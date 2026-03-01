@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 import { getAuditContext } from "@/lib/audit";
@@ -41,8 +41,7 @@ export const DELETE = withAuth<Params>(async (req: NextRequest, { params, user }
 
     return json({ ok: true });
   } catch (error) {
-    logger.error("Expert delete error", error as Error, { path: "/api/experts/[id]", method: "DELETE" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/experts/[id]", method: "DELETE" });
   }
 }, { requiredPermissions: ["experts.manage"] });
 
@@ -85,7 +84,6 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
       createdAt: updated.createdAt,
     });
   } catch (error) {
-    logger.error("Expert update error", error as Error, { path: "/api/experts/[id]", method: "PATCH" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/experts/[id]", method: "PATCH" });
   }
 }, { requiredPermissions: ["experts.manage"] });

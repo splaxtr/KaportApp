@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 
@@ -28,8 +28,7 @@ export const GET = withAuth<Params>(async (_req: NextRequest, { params }) => {
 
     return json(addresses);
   } catch (error) {
-    logger.error("Customer addresses fetch error", error as Error, { path: "/api/customers/[id]/addresses", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers/[id]/addresses", method: "GET" });
   }
 }, { requiredPermissions: ["customers.manage"] });
 
@@ -57,7 +56,6 @@ export const POST = withAuth<Params>(async (req: NextRequest, { params }) => {
 
     return json(created, { status: 201 });
   } catch (error) {
-    logger.error("Customer address create error", error as Error, { path: "/api/customers/[id]/addresses", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/customers/[id]/addresses", method: "POST" });
   }
 }, { requiredPermissions: ["customers.manage"] });

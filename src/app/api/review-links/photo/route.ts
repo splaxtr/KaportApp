@@ -4,7 +4,7 @@ import { existsSync } from "fs";
 import path from "path";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, notFound, serverError } from "@/lib/http";
+import { badRequest, notFound, handleApiError } from "@/lib/http";
 import { verifyReviewSessionToken } from "@/lib/review-session";
 import { withRateLimit } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
@@ -64,7 +64,6 @@ export const GET = withRateLimit(async (req: NextRequest) => {
       },
     });
   } catch (error) {
-    logger.error("Review photo serve error", error as Error, { path: "/api/review-links/photo", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/review-links/photo", method: "GET" });
   }
 }, 120, 60000);

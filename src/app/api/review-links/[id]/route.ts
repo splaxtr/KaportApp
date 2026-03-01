@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 import { getAuditContext } from "@/lib/audit";
@@ -39,7 +39,6 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params, user })
 
     return json({ ok: true });
   } catch (error) {
-    logger.error("Review link update error", error as Error, { path: "/api/review-links/[id]", method: "PATCH" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/review-links/[id]", method: "PATCH" });
   }
 }, { requiredPermissions: ["reviews.manage"] });

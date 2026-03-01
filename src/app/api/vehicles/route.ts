@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { normalizePlate } from "@/lib/plate";
-import { badRequest, json, serverError } from "@/lib/http";
+import { badRequest, json, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 
@@ -61,8 +61,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       })),
     );
   } catch (error) {
-    logger.error("Vehicle API error", error as Error, { path: "/api/vehicles" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicles", method: "GET" });
   }
 }, { requiredPermissions: ["vehicles.manage"] });
 
@@ -95,7 +94,6 @@ export const POST = withAuth(async (req: NextRequest) => {
 
     return json(created, { status: 201 });
   } catch (error) {
-    logger.error("Vehicle API error", error as Error, { path: "/api/vehicles" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicles", method: "POST" });
   }
 }, { requiredPermissions: ["vehicles.manage"] });

@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-guard";
-import { serverError } from "@/lib/http";
+import { handleApiError } from "@/lib/http";
 import { logger } from "@/lib/logger";
 
 export const GET = withAuth(async (req: NextRequest) => {
@@ -75,7 +75,6 @@ export const GET = withAuth(async (req: NextRequest) => {
       },
     });
   } catch (error) {
-    logger.error("Report export error", error as Error, { path: "/api/reports/export", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/reports/export", method: "GET" });
   }
 }, { requiredPermissions: ["vehicleFiles.manage"] });

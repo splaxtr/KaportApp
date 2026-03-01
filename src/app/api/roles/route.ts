@@ -1,4 +1,4 @@
-import { json, serverError } from "@/lib/http";
+import { json, handleApiError } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
@@ -18,7 +18,6 @@ export const GET = withAuth(async () => {
       })),
     );
   } catch (error) {
-    logger.error("Roles fetch error", error as Error, { path: "/api/roles", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/roles", method: "GET" });
   }
 }, { requiredPermissions: ["roles.manage"] });

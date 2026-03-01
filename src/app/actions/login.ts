@@ -84,7 +84,31 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
 
     return { success: true };
   } catch (error) {
-    logger.error("Login error", error as Error, { path: "actions/login" });
-    return { success: false, error: "Beklenmedik hata oluştu." };
+    const err = error as Error;
+    const errMsg = err.message || "";
+    const errName = err.name || "";
+
+    logger.error("Login action error", err, { path: "actions/login", email });
+
+    // Kullanıcıya gösterilecek mesajı hata türüne göre belirle
+    if (errName.includes("PrismaClient") || errMsg.includes("prisma")) {
+      if (errMsg.includes("Authentication failed")) {
+        return { success: false, error: "Veritabanı bağlantı hatası. Sistem yöneticisine başvurun." };
+      }
+      if (errMsg.includes("connect") || errMsg.includes("Connection") || errMsg.includes("timeout")) {
+        return { success: false, error: "Veritabanına bağlanılamadı. Lütfen birkaç dakika sonra tekrar deneyin." };
+      }
+      return { success: false, error: "Veritabanı hatası oluştu. Lütfen tekrar deneyin." };
+    }
+
+    if (errMsg.includes("Redis") || errMsg.includes("redis") || errMsg.includes("ECONNREFUSED")) {
+      return { success: false, error: "Oturum servisi geçici olarak kullanılamıyor. Lütfen tekrar deneyin." };
+    }
+
+    if (errMsg.includes("JWT") || errMsg.includes("jwt") || errMsg.includes("secret")) {
+      return { success: false, error: "Oturum oluşturulurken hata oluştu. Sistem yöneticisine başvurun." };
+    }
+
+    return { success: false, error: "Beklenmedik hata oluştu. Lütfen tekrar deneyin." };
   }
 }

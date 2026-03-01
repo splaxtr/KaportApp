@@ -26,7 +26,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Non-root kullanıcı oluştur
 RUN addgroup --system --gid 1001 appgroup && \
-    adduser --system --uid 1001 appuser
+    adduser --system --uid 1001 -G appgroup appuser
 
 # Copy only the necessary files from the builder
 COPY --from=builder /app/package*.json ./
@@ -36,11 +36,16 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
+# su-exec yükle (root→appuser geçişi için)
+RUN apk add --no-cache su-exec
+
 # Upload ve log dizinlerini oluştur ve yetkilendir
 RUN mkdir -p /app/uploads /app/logs && \
     chown -R appuser:appgroup /app
 
-USER appuser
+# Entrypoint: volume izinlerini düzelt, sonra appuser olarak çalıştır
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 3000
 
@@ -48,4 +53,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["npm", "run", "start"]

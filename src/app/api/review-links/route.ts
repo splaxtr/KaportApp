@@ -2,7 +2,7 @@ import { randomBytes } from "crypto";
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, serverError } from "@/lib/http";
+import { badRequest, json, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 
@@ -44,8 +44,7 @@ export const GET = withAuth(async () => {
       })),
     );
   } catch (error) {
-    logger.error("Review links fetch error", error as Error, { path: "/api/review-links", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/review-links", method: "GET" });
   }
 }, { requiredPermissions: ["reviews.manage"] });
 
@@ -91,7 +90,6 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 },
     );
   } catch (error) {
-    logger.error("Review link create error", error as Error, { path: "/api/review-links", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/review-links", method: "POST" });
   }
 }, { requiredPermissions: ["reviews.manage"] });

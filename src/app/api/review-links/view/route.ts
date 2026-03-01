@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { badRequest, json, notFound, serverError } from "@/lib/http";
+import { badRequest, json, notFound, handleApiError } from "@/lib/http";
 import { withRateLimit } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 import { createReviewSessionToken } from "@/lib/review-session";
@@ -77,7 +77,6 @@ export const POST = withRateLimit(async (req: NextRequest) => {
       })),
     });
   } catch (error) {
-    logger.error("Review link view error", error as Error, { path: "/api/review-links/view", method: "POST" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/review-links/view", method: "POST" });
   }
 }, 10, 60000);

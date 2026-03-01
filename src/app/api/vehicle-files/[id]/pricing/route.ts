@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-guard";
-import { notFound, serverError } from "@/lib/http";
+import { notFound, handleApiError } from "@/lib/http";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { validate } from "@/lib/validations";
@@ -83,8 +83,7 @@ export const GET = withAuth(async (req: NextRequest, { params }) => {
       },
     });
   } catch (error) {
-    logger.error("Pricing fetch error", error as Error, { path: "/api/vehicle-files/[id]/pricing", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicle-files/[id]/pricing", method: "GET" });
   }
 }, { requiredPermissions: ["vehicleFiles.manage"] });
 
@@ -120,7 +119,6 @@ export const PATCH = withAuth(async (req: NextRequest, { params }) => {
       taxRate: updated.taxRate ? Number(updated.taxRate) : 20,
     });
   } catch (error) {
-    logger.error("Pricing update error", error as Error, { path: "/api/vehicle-files/[id]/pricing", method: "PATCH" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicle-files/[id]/pricing", method: "PATCH" });
   }
 }, { requiredPermissions: ["vehicleFiles.manage"] });

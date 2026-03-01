@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-guard";
-import { notFound, serverError } from "@/lib/http";
+import { notFound, handleApiError } from "@/lib/http";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { validate } from "@/lib/validations";
@@ -35,8 +35,7 @@ export const GET = withAuth<Params>(async (req: NextRequest, { params }) => {
     if (!appointment) return notFound();
     return NextResponse.json(appointment);
   } catch (error) {
-    logger.error("Appointment fetch error", error as Error, { path: "/api/appointments/[id]", method: "GET" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/appointments/[id]", method: "GET" });
   }
 });
 
@@ -76,8 +75,7 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
 
     return NextResponse.json(updated);
   } catch (error) {
-    logger.error("Appointment update error", error as Error, { path: "/api/appointments/[id]", method: "PATCH" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/appointments/[id]", method: "PATCH" });
   }
 });
 
@@ -95,7 +93,6 @@ export const DELETE = withAuth<Params>(async (req: NextRequest, { params }) => {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("Appointment delete error", error as Error, { path: "/api/appointments/[id]", method: "DELETE" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/appointments/[id]", method: "DELETE" });
   }
 });

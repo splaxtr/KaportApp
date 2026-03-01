@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { normalizePlate } from "@/lib/plate";
-import { badRequest, json, serverError } from "@/lib/http";
+import { badRequest, json, handleApiError } from "@/lib/http";
 import { withAuth } from "@/lib/api-guard";
 import { logger } from "@/lib/logger";
 import { notifyAdmins } from "@/lib/notifications";
@@ -58,8 +58,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       })),
     );
   } catch (error) {
-    logger.error("VehicleFile API error", error as Error, { path: "/api/vehicle-files" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicle-files", method: "GET" });
   }
 }, { requiredPermissions: ["vehicleFiles.manage"] });
 
@@ -173,7 +172,6 @@ export const POST = withAuth(async (req: NextRequest) => {
       { status: 201 },
     );
   } catch (error) {
-    logger.error("VehicleFile API error", error as Error, { path: "/api/vehicle-files" });
-    return serverError();
+    return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicle-files", method: "POST" });
   }
 }, { requiredPermissions: ["vehicleFiles.manage"] });

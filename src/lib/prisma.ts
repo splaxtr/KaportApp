@@ -13,8 +13,13 @@ type PrismaClientInstance = Record<string, any> & {
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
+  console.error("[PRISMA] DATABASE_URL ortam değişkeni ayarlanmamış!");
   throw new Error("DATABASE_URL is not set");
 }
+
+// Bağlantı bilgisini logla (şifreyi gizle)
+const safeUrl = connectionString.replace(/:([^@]+)@/, ":***@");
+console.log(`[PRISMA] Veritabanına bağlanılıyor: ${safeUrl}`);
 
 const globalForPrisma = globalThis as unknown as {
   pool?: Pool;
@@ -28,6 +33,12 @@ const pool = globalForPrisma.pool ?? new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(pool as any).on("error", (err: Error) => {
+  console.error("[PRISMA] PostgreSQL pool hatası:", err.message);
+});
+
 const prisma: PrismaClientInstance =
   globalForPrisma.prisma ?? new PrismaClient({ adapter: new PrismaPg(pool) });
 
