@@ -51,21 +51,23 @@ export default function CalendarClient() {
   const [form, setForm] = useState({ title: "", date: "", endDate: "", type: "other" as string, notes: "" });
   const [saving, setSaving] = useState(false);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (date: Date) => {
     setLoading(true);
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+    const year = date.getFullYear();
+    const month = date.getMonth();
     const from = new Date(year, month - 1, 1).toISOString();
     const to = new Date(year, month + 2, 0).toISOString();
     try {
       const res = await fetch(`/api/appointments?from=${from}&to=${to}`);
       if (res.ok) setAppointments(await res.json());
+    } catch {
+      // Ağ hatası - mevcut randevuları koru
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchAppointments(); }, [currentDate.getMonth(), currentDate.getFullYear()]);
+  useEffect(() => { fetchAppointments(currentDate); }, [currentDate.getMonth(), currentDate.getFullYear()]);
 
   const navigate = (dir: number) => {
     const d = new Date(currentDate);
@@ -123,7 +125,7 @@ export default function CalendarClient() {
       if (res.ok) {
         setShowModal(false);
         setForm({ title: "", date: "", endDate: "", type: "other", notes: "" });
-        await fetchAppointments();
+        await fetchAppointments(currentDate);
       }
     } finally {
       setSaving(false);
@@ -136,7 +138,7 @@ export default function CalendarClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    await fetchAppointments();
+    await fetchAppointments(currentDate);
   };
 
   const today = new Date();

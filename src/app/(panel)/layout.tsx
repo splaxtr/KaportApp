@@ -1,7 +1,7 @@
 // Client layout for navigation highlighting
 "use client";
 
-import React, { useEffect, useState, useTransition, useRef } from "react";
+import React, { useEffect, useState, useTransition, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSelectedLayoutSegment } from "next/navigation";
 
@@ -35,7 +35,9 @@ const mobileNavSecondary = [
   { href: "/trash", label: "Silinenler", icon: "🗑️" },
 ];
 
-function NavLink({ href, label, icon }: { href: string; label: string; icon: string }) {
+type NavItem = { href: string; label: string; icon: string };
+
+function NavLink({ href, label, icon }: NavItem) {
   const segment = useSelectedLayoutSegment();
   const isActive = href === `/${segment ?? ""}` || (href === "/dashboard" && segment === null);
   return (
@@ -56,6 +58,123 @@ function NavLink({ href, label, icon }: { href: string; label: string; icon: str
   );
 }
 
+function MobileBottomNav({
+  primaryItems,
+  secondaryItems,
+  onLogout,
+  loggingOut,
+}: {
+  primaryItems: NavItem[];
+  secondaryItems: NavItem[];
+  onLogout: () => void;
+  loggingOut: boolean;
+}) {
+  const segment = useSelectedLayoutSegment();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  // Close the "Daha" menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    }
+    if (moreOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [moreOpen]);
+
+  // Check if any secondary item is active
+  const secondaryActive = secondaryItems.some(
+    (item) => item.href === `/${segment ?? ""}`,
+  );
+
+  return (
+    <nav
+      aria-label="Mobil menü"
+      className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0c0f1a]/95 backdrop-blur-lg md:hidden"
+    >
+      <div className="mx-auto flex max-w-md items-stretch justify-around px-1 py-1.5">
+        {primaryItems.map((item) => {
+          const isActive =
+            item.href === `/${segment ?? ""}` || (item.href === "/dashboard" && segment === null);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
+                isActive
+                  ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <span className="text-xl leading-none">{item.icon}</span>
+              <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+            </Link>
+          );
+        })}
+
+        {/* "Daha" overflow menu */}
+        {secondaryItems.length > 0 && (
+          <div ref={moreRef} className="relative flex flex-1 flex-col items-center">
+            <button
+              type="button"
+              onClick={() => setMoreOpen((v) => !v)}
+              className={`flex w-full flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
+                moreOpen || secondaryActive
+                  ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <span className="text-xl leading-none">···</span>
+              <span className="text-[10px] font-medium leading-tight">Daha</span>
+            </button>
+
+            {moreOpen && (
+              <div className="absolute bottom-full mb-2 right-0 min-w-[180px] rounded-xl border border-white/10 bg-[#0c0f1a]/95 p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.5)] backdrop-blur-lg">
+                {secondaryItems.map((item) => {
+                  const isActive = item.href === `/${segment ?? ""}`;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMoreOpen(false)}
+                      className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                        isActive
+                          ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
+                          : "text-slate-300 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <span className="text-base">{item.icon}</span>
+                      {item.label}
+                    </Link>
+                  );
+                })}
+
+                {/* Logout inside overflow menu */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    onLogout();
+                  }}
+                  disabled={loggingOut}
+                  className="mt-1 flex w-full items-center gap-2.5 rounded-lg border-t border-white/5 px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  <span className="text-base">⏻</span>
+                  {loggingOut ? "Çıkış yapılıyor..." : "Çıkış yap"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </nav>
+  );
+}
+
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [role, setRole] = useState<string | null>(null);
@@ -63,8 +182,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [loggingOut, startLogout] = useTransition();
 
   useEffect(() => {
-    // Cookie httpOnly olduğu için document.cookie'den okunamaz
-    // Rol bilgisini API'den al
     fetch("/api/auth/me")
       .then((r) => {
         if (!r.ok) {
@@ -82,7 +199,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       });
   }, [router]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     startLogout(async () => {
       try {
         await logoutAction();
@@ -95,7 +212,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         router.refresh();
       }
     });
-  };
+  }, [router]);
 
   const roleLabel =
     role === "system_admin"
@@ -121,119 +238,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const visibleNav = role === "employee" ? navItems.filter((item) => item.href !== "/settings") : navItems;
 
-  // For mobile: filter primary items based on role too
   const visibleMobilePrimary =
     role === "employee" ? mobileNavPrimary.filter((item) => item.href !== "/settings") : mobileNavPrimary;
 
   const visibleMobileSecondary =
     role === "employee" ? mobileNavSecondary : mobileNavSecondary;
-
-  const MobileBottomNav = () => {
-    const segment = useSelectedLayoutSegment();
-    const [moreOpen, setMoreOpen] = useState(false);
-    const moreRef = useRef<HTMLDivElement>(null);
-
-    // Close the "Daha" menu when clicking outside
-    useEffect(() => {
-      function handleClickOutside(e: MouseEvent) {
-        if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-          setMoreOpen(false);
-        }
-      }
-      if (moreOpen) {
-        document.addEventListener("mousedown", handleClickOutside);
-      }
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [moreOpen]);
-
-    // Check if any secondary item is active
-    const secondaryActive = visibleMobileSecondary.some(
-      (item) => item.href === `/${segment ?? ""}`,
-    );
-
-    return (
-      <nav
-        aria-label="Mobil menü"
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0c0f1a]/95 backdrop-blur-lg md:hidden"
-      >
-        <div className="mx-auto flex max-w-md items-stretch justify-around px-1 py-1.5">
-          {visibleMobilePrimary.map((item) => {
-            const isActive =
-              item.href === `/${segment ?? ""}` || (item.href === "/dashboard" && segment === null);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
-                  isActive
-                    ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <span className="text-xl leading-none">{item.icon}</span>
-                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
-              </Link>
-            );
-          })}
-
-          {/* "Daha" overflow menu */}
-          {visibleMobileSecondary.length > 0 && (
-            <div ref={moreRef} className="relative flex flex-1 flex-col items-center">
-              <button
-                type="button"
-                onClick={() => setMoreOpen((v) => !v)}
-                className={`flex w-full flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
-                  moreOpen || secondaryActive
-                    ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <span className="text-xl leading-none">···</span>
-                <span className="text-[10px] font-medium leading-tight">Daha</span>
-              </button>
-
-              {moreOpen && (
-                <div className="absolute bottom-full mb-2 right-0 min-w-[180px] rounded-xl border border-white/10 bg-[#0c0f1a]/95 p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.5)] backdrop-blur-lg">
-                  {visibleMobileSecondary.map((item) => {
-                    const isActive = item.href === `/${segment ?? ""}`;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setMoreOpen(false)}
-                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                          isActive
-                            ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
-                            : "text-slate-300 hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
-                        <span className="text-base">{item.icon}</span>
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-
-                  {/* Logout inside overflow menu */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMoreOpen(false);
-                      handleLogout();
-                    }}
-                    disabled={loggingOut}
-                    className="mt-1 flex w-full items-center gap-2.5 rounded-lg border-t border-white/5 px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    <span className="text-base">⏻</span>
-                    {loggingOut ? "Çıkış yapılıyor..." : "Çıkış yap"}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </nav>
-    );
-  };
 
   return (
     <>
@@ -281,7 +290,12 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </main>
         </div>
       </div>
-      <MobileBottomNav />
+      <MobileBottomNav
+        primaryItems={visibleMobilePrimary}
+        secondaryItems={visibleMobileSecondary}
+        onLogout={handleLogout}
+        loggingOut={loggingOut}
+      />
     </>
   );
 }

@@ -1,4 +1,4 @@
-require("dotenv").config();
+try { require("dotenv").config(); } catch { /* Docker ortamında dotenv gerekmez */ }
 
 const { PrismaClient, RoleKey } = require("@prisma/client");
 const { PrismaPg } = require("@prisma/adapter-pg");
