@@ -78,7 +78,6 @@ setInterval(() => {
 function isSameOrigin(req: NextRequest): boolean {
   const origin = req.headers.get("origin");
   const referer = req.headers.get("referer");
-  const expectedOrigin = req.nextUrl.origin;
 
   const candidate = origin || referer;
   // Origin ve Referer header'ları yoksa state-changing istekleri reddet
@@ -86,7 +85,23 @@ function isSameOrigin(req: NextRequest): boolean {
 
   try {
     const url = new URL(candidate);
-    return url.origin === expectedOrigin;
+
+    // 1) NEXT_PUBLIC_APP_URL varsa (production/Docker), onu kullan
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (appUrl) {
+      const expected = new URL(appUrl);
+      return url.origin === expected.origin;
+    }
+
+    // 2) Host header ile karşılaştır (reverse proxy arkasında daha güvenilir)
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+    if (host) {
+      // host "example.com" veya "example.com:3000" formatında olabilir
+      return url.host === host;
+    }
+
+    // 3) Fallback: nextUrl.origin (sadece dev ortamında güvenilir)
+    return url.origin === req.nextUrl.origin;
   } catch {
     return false;
   }
