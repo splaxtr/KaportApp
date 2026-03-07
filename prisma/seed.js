@@ -12,7 +12,7 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString, connectionTimeoutMillis: 10000, idleTimeoutMillis: 5000 });
+const pool = new Pool({ connectionString, connectionTimeoutMillis: 30000, idleTimeoutMillis: 10000 });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 // Seed'in takılıp kalmasını önle
