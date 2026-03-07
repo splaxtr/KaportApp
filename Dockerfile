@@ -29,28 +29,27 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 --ingroup appgroup appuser
 
-# Copy only the necessary files from the builder
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-
-# su-exec yukle (root→appuser gecisi icin)
+# su-exec yukle
 RUN apk add --no-cache su-exec
 
-# Upload ve log dizinlerini olustur ve yetkilendir
-RUN mkdir -p /app/uploads /app/logs && \
-    chown -R appuser:appgroup /app
+# Copy files with correct ownership directly (chown -R yerine)
+COPY --from=builder --chown=appuser:appgroup /app/package*.json ./
+COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /app/.next ./.next
+COPY --from=builder --chown=appuser:appgroup /app/public ./public
+COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
+COPY --from=builder --chown=appuser:appgroup /app/prisma.config.ts ./prisma.config.ts
 
-# Entrypoint: volume izinlerini duzelt, sonra appuser olarak calistir
-COPY docker-entrypoint.sh /usr/local/bin/
+# Upload ve log dizinleri (sadece bu 2 dizin icin chown - cok hizli)
+RUN mkdir -p /app/uploads /app/logs && \
+    chown appuser:appgroup /app/uploads /app/logs
+
+# Entrypoint
+COPY --chown=appuser:appgroup docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 3000
 
-# Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
