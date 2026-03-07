@@ -31,15 +31,24 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
     if (!part) return notFound();
 
     const body = await req.json().catch(() => ({}));
-    const data: { name?: string; quantity?: number; statusId?: number } = {};
+    const data: { name?: string; quantity?: number; unitPrice?: number | null; totalPrice?: number | null; statusId?: number } = {};
 
     if (typeof body?.name === "string" && body.name.trim()) data.name = body.name.trim();
     if (typeof body?.quantity === "number" && body.quantity > 0) data.quantity = body.quantity;
+    if (body?.unitPrice !== undefined) {
+      const up = body.unitPrice === null || body.unitPrice === "" ? null : Number(body.unitPrice);
+      data.unitPrice = up !== null && !isNaN(up) ? up : null;
+    }
 
     if (body?.status) {
       const statusId = await ensureStatus(body.status);
       if (statusId) data.statusId = statusId;
     }
+
+    // Auto-calculate totalPrice
+    const qty = data.quantity ?? part.quantity;
+    const up = data.unitPrice !== undefined ? data.unitPrice : (part.unitPrice ? Number(part.unitPrice) : null);
+    data.totalPrice = up !== null ? up * qty : null;
 
     const updated = await prisma.part.update({
       where: { id: partId },
@@ -51,6 +60,8 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
       id: updated.id,
       name: updated.name,
       quantity: updated.quantity,
+      unitPrice: updated.unitPrice ? Number(updated.unitPrice) : null,
+      totalPrice: updated.totalPrice ? Number(updated.totalPrice) : null,
       status: updated.status?.label ?? "",
     });
   } catch (error) {

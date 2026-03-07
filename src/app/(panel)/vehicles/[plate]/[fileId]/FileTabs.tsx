@@ -66,7 +66,7 @@ export function FileTabs({
 }) {
   const [active, setActive] = useState<TabKey>("summary");
   const [parts, setParts] = useState<PartData[]>(initialParts);
-  const [partForm, setPartForm] = useState({ lines: "", status: "Beklemede" });
+  const [partForm, setPartForm] = useState({ lines: "", status: "Beklemede", unitPrice: "" });
   const [partError, setPartError] = useState<string | null>(null);
   const [loadingPart, setLoadingPart] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -76,7 +76,7 @@ export function FileTabs({
   const [bulkStatus, setBulkStatus] = useState<string>("");
   const [bulkQuantity, setBulkQuantity] = useState<string>("");
   const [ops, setOps] = useState<OperationData[]>(operations);
-  const [opForm, setOpForm] = useState({ lines: "", status: "Beklemede" });
+  const [opForm, setOpForm] = useState({ lines: "", status: "Beklemede", laborCost: "", materialCost: "" });
   const [opError, setOpError] = useState<string | null>(null);
   const [opLoading, setOpLoading] = useState(false);
   const [opEditingId, setOpEditingId] = useState<number | null>(null);
@@ -117,7 +117,7 @@ export function FileTabs({
         const labels = data.map((d) => d.label);
         setStatusOptions(labels);
         if (labels.length > 0) {
-          setPartForm((p) => ({ ...p, status: p.status || labels[0] }));
+          setPartForm((p) => ({ ...p, status: p.status || labels[0], unitPrice: p.unitPrice }));
         }
       } catch {
         /* silent */
@@ -148,7 +148,7 @@ export function FileTabs({
         const labels = data.map((d) => d.label);
         setOpStatusOptions(labels);
         if (labels.length > 0) {
-          setOpForm((p) => ({ ...p, status: p.status || labels[0] }));
+          setOpForm((p) => ({ ...p, status: p.status || labels[0], laborCost: p.laborCost, materialCost: p.materialCost }));
         }
       } catch {
         /* silent */
@@ -245,12 +245,13 @@ export function FileTabs({
             name: first.name,
             quantity: first.quantity,
             status: partForm.status,
+            unitPrice: partForm.unitPrice ? Number(partForm.unitPrice) : null,
           }),
         });
         if (!res.ok) throw new Error("Güncellenemedi");
         const refreshed = await fetch(`/api/vehicle-files/parts?fileId=${fileId}`, { cache: "no-store" }).then((r) => r.json());
         setParts(refreshed);
-      setPartForm({ lines: "", status: "Beklemede" });
+      setPartForm({ lines: "", status: "Beklemede", unitPrice: "" });
       setEditingId(null);
       setShowPartModal(false);
     } catch (err) {
@@ -275,13 +276,14 @@ export function FileTabs({
             name: item.name,
             quantity: item.quantity,
             status: partForm.status,
+            unitPrice: partForm.unitPrice ? Number(partForm.unitPrice) : null,
           }),
         });
         if (!res.ok) throw new Error("Eklenemedi");
       }
       const refreshed = await fetch(`/api/vehicle-files/parts?fileId=${fileId}`, { cache: "no-store" }).then((r) => r.json());
       setParts(refreshed);
-      setPartForm({ lines: "", status: "Beklemede" });
+      setPartForm({ lines: "", status: "Beklemede", unitPrice: "" });
     } catch (err) {
       setPartError(err instanceof Error ? err.message : "Bilinmeyen hata");
     } finally {
@@ -357,7 +359,7 @@ export function FileTabs({
 
   function startEdit(part: PartData) {
     setEditingId(part.id);
-    setPartForm({ lines: `${part.name}${part.quantity > 1 ? `*${part.quantity}` : ""}`, status: part.status });
+    setPartForm({ lines: `${part.name}${part.quantity > 1 ? `*${part.quantity}` : ""}`, status: part.status, unitPrice: part.unitPrice != null ? String(part.unitPrice) : "" });
     setShowPartModal(true);
   }
 
@@ -388,12 +390,17 @@ export function FileTabs({
         const res = await fetch(`/api/operations/${opEditingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: first.title, status: opForm.status }),
+          body: JSON.stringify({
+            title: first.title,
+            status: opForm.status,
+            laborCost: opForm.laborCost ? Number(opForm.laborCost) : null,
+            materialCost: opForm.materialCost ? Number(opForm.materialCost) : null,
+          }),
         });
         if (!res.ok) throw new Error("Güncellenemedi");
         const refreshed = await fetch(`/api/vehicle-files/operations?fileId=${fileId}`, { cache: "no-store" }).then((r) => r.json());
         setOps(refreshed);
-        setOpForm({ lines: "", status: "Beklemede" });
+        setOpForm({ lines: "", status: "Beklemede", laborCost: "", materialCost: "" });
         setOpEditingId(null);
         setShowOpModal(false);
       } catch (err) {
@@ -414,13 +421,18 @@ export function FileTabs({
         const res = await fetch(`/api/vehicle-files/operations?fileId=${fileId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: item.title, status: opForm.status }),
+          body: JSON.stringify({
+            title: item.title,
+            status: opForm.status,
+            laborCost: opForm.laborCost ? Number(opForm.laborCost) : null,
+            materialCost: opForm.materialCost ? Number(opForm.materialCost) : null,
+          }),
         });
         if (!res.ok) throw new Error("Eklenemedi");
       }
       const refreshed = await fetch(`/api/vehicle-files/operations?fileId=${fileId}`, { cache: "no-store" }).then((r) => r.json());
       setOps(refreshed);
-      setOpForm({ lines: "", status: "Beklemede" });
+      setOpForm({ lines: "", status: "Beklemede", laborCost: "", materialCost: "" });
       setShowOpModal(false);
     } catch (err) {
       setOpError(err instanceof Error ? err.message : "Bilinmeyen hata");
@@ -491,9 +503,9 @@ export function FileTabs({
     }
   }
 
-  function startEditOp(op: any) {
+  function startEditOp(op: OperationData) {
     setOpEditingId(op.id);
-    setOpForm({ lines: op.title, status: op.status });
+    setOpForm({ lines: op.title, status: op.status, laborCost: op.laborCost != null ? String(op.laborCost) : "", materialCost: op.materialCost != null ? String(op.materialCost) : "" });
     setShowOpModal(true);
   }
 
@@ -574,7 +586,7 @@ export function FileTabs({
               type="button"
               onClick={() => {
                 setEditingId(null);
-                setPartForm({ lines: "", status: "Beklemede" });
+                setPartForm({ lines: "", status: "Beklemede", unitPrice: "" });
                 setPartError(null);
                 setShowPartModal(true);
               }}
@@ -642,6 +654,8 @@ export function FileTabs({
                   </th>
                   <th className="px-4 py-3">Parça</th>
                   <th className="px-4 py-3">Adet</th>
+                  <th className="px-4 py-3 text-right">Birim Fiyat</th>
+                  <th className="px-4 py-3 text-right">Toplam</th>
                   <th className="px-4 py-3">Durum</th>
                   <th className="px-4 py-3 text-right">İşlem</th>
                 </tr>
@@ -649,7 +663,7 @@ export function FileTabs({
               <tbody className="divide-y divide-white/10">
                 {parts.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-3 text-center text-slate-300">
+                    <td colSpan={7} className="px-4 py-3 text-center text-slate-300">
                       Parça kaydı yok.
                     </td>
                   </tr>
@@ -666,6 +680,8 @@ export function FileTabs({
                       </td>
                       <td className="px-4 py-3 text-white">{p.name}</td>
                       <td className="px-4 py-3 text-slate-200">{p.quantity}</td>
+                      <td className="px-4 py-3 text-right text-slate-200">{p.unitPrice != null ? `₺${p.unitPrice.toLocaleString("tr-TR")}` : "—"}</td>
+                      <td className="px-4 py-3 text-right font-medium text-white">{p.totalPrice != null ? `₺${p.totalPrice.toLocaleString("tr-TR")}` : "—"}</td>
                       <td className="px-4 py-3 text-slate-200">{p.status}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2 text-xs">
@@ -704,7 +720,7 @@ export function FileTabs({
                 onClick={() => {
                   setShowPartModal(false);
                   setEditingId(null);
-                  setPartForm({ lines: "", status: "Beklemede" });
+                  setPartForm({ lines: "", status: "Beklemede", unitPrice: "" });
                   setPartError(null);
                 }}
                 className="rounded-full border border-white/15 px-3 py-1 text-xs text-slate-200 hover:border-lime-300/60 hover:text-white"
@@ -719,6 +735,15 @@ export function FileTabs({
               onChange={(e) => setPartForm((p) => ({ ...p, lines: e.target.value }))}
               className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-lime-300/70 focus:outline-none"
               rows={4}
+            />
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Birim fiyat (₺)"
+              value={partForm.unitPrice}
+              onChange={(e) => setPartForm((p) => ({ ...p, unitPrice: e.target.value }))}
+              className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-lime-300/70 focus:outline-none"
             />
             <select
               value={partForm.status}
@@ -741,7 +766,7 @@ export function FileTabs({
                 onClick={() => {
                   setShowPartModal(false);
                   setEditingId(null);
-                  setPartForm({ lines: "", status: "Beklemede" });
+                  setPartForm({ lines: "", status: "Beklemede", unitPrice: "" });
                     setPartError(null);
                   }}
                   className="rounded-md border border-white/15 px-3 py-2 text-xs text-slate-200 hover:border-lime-300/70 hover:text-white"
@@ -772,7 +797,7 @@ export function FileTabs({
               className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-200 hover:border-lime-300/70 hover:text-white"
               onClick={() => {
                 setOpEditingId(null);
-                setOpForm({ lines: "", status: opStatusOptions[0] || "Beklemede" });
+                setOpForm({ lines: "", status: opStatusOptions[0] || "Beklemede", laborCost: "", materialCost: "" });
                 setOpError(null);
                 setShowOpModal(true);
               }}
@@ -830,14 +855,16 @@ export function FileTabs({
                   </th>
                   <th className="px-4 py-3">İşlem</th>
                   <th className="px-4 py-3">Not</th>
+                  <th className="px-4 py-3 text-right">İşçilik</th>
+                  <th className="px-4 py-3 text-right">Malzeme</th>
                   <th className="px-4 py-3">Durum</th>
-                  <th className="px-4 py-3 text-right">İşlem</th>
+                  <th className="px-4 py-3 text-right">Eylem</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {ops.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-3 text-center text-slate-300">
+                    <td colSpan={7} className="px-4 py-3 text-center text-slate-300">
                       İşlem kaydı yok.
                     </td>
                   </tr>
@@ -854,6 +881,8 @@ export function FileTabs({
                       </td>
                       <td className="px-4 py-3 text-white">{op.title}</td>
                       <td className="px-4 py-3 text-slate-200">{op.note || "—"}</td>
+                      <td className="px-4 py-3 text-right text-slate-200">{op.laborCost != null ? `₺${op.laborCost.toLocaleString("tr-TR")}` : "—"}</td>
+                      <td className="px-4 py-3 text-right text-slate-200">{op.materialCost != null ? `₺${op.materialCost.toLocaleString("tr-TR")}` : "—"}</td>
                       <td className="px-4 py-3 text-slate-200">{op.status}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2 text-xs">
@@ -1025,7 +1054,7 @@ export function FileTabs({
                 onClick={() => {
                   setShowOpModal(false);
                   setOpEditingId(null);
-                  setOpForm({ lines: "", status: "Beklemede" });
+                  setOpForm({ lines: "", status: "Beklemede", laborCost: "", materialCost: "" });
                   setOpError(null);
                 }}
                 className="rounded-full border border-white/15 px-3 py-1 text-xs text-slate-200 hover:border-lime-300/60 hover:text-white"
@@ -1041,6 +1070,26 @@ export function FileTabs({
                 className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-lime-300/70 focus:outline-none"
                 rows={4}
               />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="İşçilik maliyeti (₺)"
+                  value={opForm.laborCost}
+                  onChange={(e) => setOpForm((p) => ({ ...p, laborCost: e.target.value }))}
+                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-lime-300/70 focus:outline-none"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Malzeme maliyeti (₺)"
+                  value={opForm.materialCost}
+                  onChange={(e) => setOpForm((p) => ({ ...p, materialCost: e.target.value }))}
+                  className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-lime-300/70 focus:outline-none"
+                />
+              </div>
               <select
                 value={opForm.status}
                 onChange={(e) => setOpForm((p) => ({ ...p, status: e.target.value }))}
@@ -1062,7 +1111,7 @@ export function FileTabs({
                   onClick={() => {
                     setShowOpModal(false);
                     setOpEditingId(null);
-                    setOpForm({ lines: "", status: "Beklemede" });
+                    setOpForm({ lines: "", status: "Beklemede", laborCost: "", materialCost: "" });
                     setOpError(null);
                   }}
                   className="rounded-md border border-white/15 px-3 py-2 text-xs text-slate-200 hover:border-lime-300/70 hover:text-white"

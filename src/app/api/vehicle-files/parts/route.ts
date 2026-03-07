@@ -31,10 +31,12 @@ export const GET = withAuth(async (req: NextRequest) => {
     });
 
     return json(
-      parts.map((p: { id: number; name: string; quantity: number; status: { label: string } | null }) => ({
+      parts.map((p: { id: number; name: string; quantity: number; unitPrice: any; totalPrice: any; status: { label: string } | null }) => ({
         id: p.id,
         name: p.name,
         quantity: p.quantity,
+        unitPrice: p.unitPrice ? Number(p.unitPrice) : null,
+        totalPrice: p.totalPrice ? Number(p.totalPrice) : null,
         status: p.status?.label ?? "",
       })),
     );
@@ -52,6 +54,9 @@ export const POST = withAuth(async (req: NextRequest) => {
     const name = typeof body?.name === "string" ? body.name.trim() : "";
     const quantity = typeof body?.quantity === "number" && body.quantity > 0 ? body.quantity : 1;
     const statusLabel = typeof body?.status === "string" ? body.status.trim() : null;
+    const rawUnitPrice = body?.unitPrice;
+    const unitPrice = rawUnitPrice !== undefined && rawUnitPrice !== null && rawUnitPrice !== "" ? Number(rawUnitPrice) : null;
+    const totalPrice = unitPrice !== null && !isNaN(unitPrice) ? unitPrice * quantity : null;
 
     if (!name) return badRequest("Parça adı gereklidir.");
 
@@ -64,6 +69,8 @@ export const POST = withAuth(async (req: NextRequest) => {
       data: {
         name,
         quantity,
+        unitPrice: unitPrice !== null && !isNaN(unitPrice) ? unitPrice : undefined,
+        totalPrice: totalPrice !== null && !isNaN(totalPrice) ? totalPrice : undefined,
         vehicleFileId: fileId,
         statusId,
       },
@@ -75,6 +82,8 @@ export const POST = withAuth(async (req: NextRequest) => {
         id: created.id,
         name: created.name,
         quantity: created.quantity,
+        unitPrice: created.unitPrice ? Number(created.unitPrice) : null,
+        totalPrice: created.totalPrice ? Number(created.totalPrice) : null,
         status: created.status?.label ?? "",
       },
       { status: 201 },

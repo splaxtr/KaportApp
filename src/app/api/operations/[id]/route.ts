@@ -31,10 +31,18 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
     if (!op) return notFound();
 
     const body = await req.json().catch(() => ({}));
-    const data: { title?: string; description?: string | null; statusId?: number } = {};
+    const data: { title?: string; description?: string | null; laborCost?: number | null; materialCost?: number | null; statusId?: number } = {};
 
     if (typeof body?.title === "string" && body.title.trim()) data.title = body.title.trim();
     if (body?.note !== undefined) data.description = typeof body.note === "string" ? body.note.trim() : null;
+    if (body?.laborCost !== undefined) {
+      const v = body.laborCost === null || body.laborCost === "" ? null : Number(body.laborCost);
+      data.laborCost = v !== null && !isNaN(v) ? v : null;
+    }
+    if (body?.materialCost !== undefined) {
+      const v = body.materialCost === null || body.materialCost === "" ? null : Number(body.materialCost);
+      data.materialCost = v !== null && !isNaN(v) ? v : null;
+    }
 
     if (body?.status) {
       const statusId = await ensureStatus(body.status);
@@ -51,6 +59,8 @@ export const PATCH = withAuth<Params>(async (req: NextRequest, { params }) => {
       id: updated.id,
       title: updated.title,
       note: updated.description,
+      laborCost: updated.laborCost ? Number(updated.laborCost) : null,
+      materialCost: updated.materialCost ? Number(updated.materialCost) : null,
       status: updated.status?.label ?? "",
     });
   } catch (error) {

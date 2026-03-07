@@ -31,10 +31,12 @@ export const GET = withAuth(async (req: NextRequest) => {
     });
 
     return json(
-      ops.map((o: { id: number; title: string; description: string | null; status: { label: string } | null }) => ({
+      ops.map((o: { id: number; title: string; description: string | null; laborCost: any; materialCost: any; status: { label: string } | null }) => ({
         id: o.id,
         title: o.title,
         note: o.description,
+        laborCost: o.laborCost ? Number(o.laborCost) : null,
+        materialCost: o.materialCost ? Number(o.materialCost) : null,
         status: o.status?.label ?? "",
       })),
     );
@@ -52,6 +54,10 @@ export const POST = withAuth(async (req: NextRequest) => {
     const title = typeof body?.title === "string" ? body.title.trim() : "";
     const statusLabel = typeof body?.status === "string" ? body.status.trim() : null;
     const note = typeof body?.note === "string" ? body.note.trim() : null;
+    const rawLabor = body?.laborCost;
+    const laborCost = rawLabor !== undefined && rawLabor !== null && rawLabor !== "" ? Number(rawLabor) : null;
+    const rawMaterial = body?.materialCost;
+    const materialCost = rawMaterial !== undefined && rawMaterial !== null && rawMaterial !== "" ? Number(rawMaterial) : null;
 
     if (!title) return badRequest("İşlem adı zorunlu.");
 
@@ -64,6 +70,8 @@ export const POST = withAuth(async (req: NextRequest) => {
       data: {
         title,
         description: note,
+        laborCost: laborCost !== null && !isNaN(laborCost) ? laborCost : undefined,
+        materialCost: materialCost !== null && !isNaN(materialCost) ? materialCost : undefined,
         vehicleFileId: fileId,
         statusId,
       },
@@ -75,6 +83,8 @@ export const POST = withAuth(async (req: NextRequest) => {
         id: created.id,
         title: created.title,
         note: created.description,
+        laborCost: created.laborCost ? Number(created.laborCost) : null,
+        materialCost: created.materialCost ? Number(created.materialCost) : null,
         status: created.status?.label ?? "",
       },
       { status: 201 },
