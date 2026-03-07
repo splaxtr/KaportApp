@@ -2,9 +2,19 @@ import React from "react";
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { styles, formatTRY, formatDateTR } from "./styles";
 
+interface CompanyInfo {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  taxId: string;
+  taxOffice: string;
+}
+
 interface InvoiceData {
   fileNumber: string;
   date: string;
+  company: CompanyInfo;
   customer: { fullName: string; email?: string | null; phone?: string | null; tcVkn?: string | null };
   vehicle: { plate: string; brandModel: string; color: string };
   parts: { name: string; quantity: number; unitPrice: number; totalPrice: number }[];
@@ -13,23 +23,32 @@ interface InvoiceData {
 }
 
 export function InvoiceDocument({ data }: { data: InvoiceData }) {
+  const companyName = data.company.name || "Firma Adı Belirtilmemiş";
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Text style={styles.title}>FATURA</Text>
-          <Text style={styles.subtitle}>KaportaAPP</Text>
+          <Text style={styles.subtitle}>{companyName}</Text>
+          {data.company.address ? <Text style={styles.companyDetail}>{data.company.address}</Text> : null}
+          {data.company.phone ? <Text style={styles.companyDetail}>Tel: {data.company.phone}</Text> : null}
+          {data.company.taxId ? (
+            <Text style={styles.companyDetail}>
+              Vergi No: {data.company.taxId}{data.company.taxOffice ? ` / ${data.company.taxOffice}` : ""}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.meta}>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>Müşteri</Text>
+            <Text style={styles.metaLabel}>Müşteri Bilgileri</Text>
             <Text style={styles.metaValue}>{data.customer.fullName}</Text>
             {data.customer.tcVkn && <><Text style={styles.metaLabel}>TC/VKN</Text><Text style={styles.metaValue}>{data.customer.tcVkn}</Text></>}
             {data.customer.phone && <Text style={styles.metaValue}>{data.customer.phone}</Text>}
           </View>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>Araç</Text>
+            <Text style={styles.metaLabel}>Araç Bilgileri</Text>
             <Text style={styles.metaValue}>{data.vehicle.plate} - {data.vehicle.brandModel}</Text>
             <Text style={styles.metaLabel}>Fatura Tarihi</Text>
             <Text style={styles.metaValue}>{formatDateTR(data.date)}</Text>
@@ -41,10 +60,10 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Parçalar</Text>
             <View style={styles.tableHeader}>
-              <Text style={[styles.col1, styles.headerText]}>Parça</Text>
+              <Text style={[styles.col1, styles.headerText]}>Parça Adı</Text>
               <Text style={[styles.col2, styles.headerText]}>Adet</Text>
               <Text style={[styles.col3, styles.headerText]}>Birim Fiyat</Text>
-              <Text style={[styles.col4, styles.headerText]}>Toplam</Text>
+              <Text style={[styles.col4, styles.headerText]}>Tutar</Text>
             </View>
             {data.parts.map((p, i) => (
               <View key={i} style={styles.tableRow}>
@@ -59,12 +78,12 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
 
         {data.operations.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>İşlemler</Text>
+            <Text style={styles.sectionTitle}>İşçilik</Text>
             <View style={styles.tableHeader}>
-              <Text style={[styles.col1, styles.headerText]}>İşlem</Text>
+              <Text style={[styles.col1, styles.headerText]}>İşlem Adı</Text>
               <Text style={[styles.col2, styles.headerText]}>İşçilik</Text>
               <Text style={[styles.col3, styles.headerText]}>Malzeme</Text>
-              <Text style={[styles.col4, styles.headerText]}>Toplam</Text>
+              <Text style={[styles.col4, styles.headerText]}>Tutar</Text>
             </View>
             {data.operations.map((op, i) => (
               <View key={i} style={styles.tableRow}>
@@ -79,7 +98,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
 
         <View style={styles.summaryBox}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Alt Toplam</Text>
+            <Text style={styles.summaryLabel}>Ara Toplam</Text>
             <Text style={styles.summaryValue}>{formatTRY(data.summary.subtotal)}</Text>
           </View>
           {data.summary.discount > 0 && (
@@ -98,7 +117,9 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           </View>
         </View>
 
-        <Text style={styles.footer}>Bu fatura KaportaAPP tarafından oluşturulmuştur.</Text>
+        <Text style={styles.footer}>
+          Bu fatura {companyName !== "Firma Adı Belirtilmemiş" ? `${companyName} tarafından` : ""} düzenlenmiştir.
+        </Text>
       </Page>
     </Document>
   );

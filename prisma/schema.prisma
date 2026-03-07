@@ -402,3 +402,14 @@ model Notification {
   @@index([readAt])
   @@index([createdAt])
 }
+
+model CompanySetting {
+  id         Int      @id @default(autoincrement())
+  updatedAt  DateTime @updatedAt
+  name       String   @default("")
+  address    String   @default("")
+  phone      String   @default("")
+  email      String   @default("")
+  taxId      String   @default("")
+  taxOffice  String   @default("")
+}

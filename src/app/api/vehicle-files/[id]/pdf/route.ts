@@ -34,6 +34,19 @@ export const GET = withAuth(async (req: NextRequest, { params }) => {
 
     if (!vehicleFile) return notFound();
 
+    let companySetting = await prisma.companySetting.findFirst();
+    if (!companySetting) {
+      companySetting = await prisma.companySetting.create({ data: {} });
+    }
+    const company = {
+      name: companySetting.name || "",
+      address: companySetting.address || "",
+      phone: companySetting.phone || "",
+      email: companySetting.email || "",
+      taxId: companySetting.taxId || "",
+      taxOffice: companySetting.taxOffice || "",
+    };
+
     const partsData = vehicleFile.parts.map((p: typeof vehicleFile.parts[number]) => ({
       name: p.name,
       quantity: p.quantity,
@@ -65,6 +78,7 @@ export const GET = withAuth(async (req: NextRequest, { params }) => {
     const commonData = {
       fileNumber: vehicleFile.fileNumber || `D-${vehicleFile.id}`,
       date: new Date().toISOString(),
+      company,
       customer: {
         fullName: vehicleFile.customer.fullName,
         email: vehicleFile.customer.email,

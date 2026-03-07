@@ -2,6 +2,11 @@ import Link from "next/link";
 
 const cards = [
   {
+    title: "Firma Bilgileri",
+    desc: "Firma adı, adres, telefon ve vergi bilgilerini düzenle. PDF belgelerinde kullanılır.",
+    href: "/settings/company",
+  },
+  {
     title: "Kullanıcılar ve Roller",
     desc: "Kullanıcı ekle, rol ata ve rolleri yönet.",
     href: "/settings/users",

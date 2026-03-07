@@ -2,9 +2,10 @@ import { StyleSheet } from "@react-pdf/renderer";
 
 export const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica" },
-  header: { marginBottom: 20 },
+  header: { marginBottom: 16 },
   title: { fontSize: 18, fontWeight: "bold", marginBottom: 4 },
-  subtitle: { fontSize: 12, color: "#666", marginBottom: 10 },
+  subtitle: { fontSize: 12, color: "#666", marginBottom: 2 },
+  companyDetail: { fontSize: 8, color: "#888", marginBottom: 1 },
   meta: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
   metaBlock: { width: "48%" },
   metaLabel: { fontSize: 8, color: "#999", textTransform: "uppercase", marginBottom: 2 },

@@ -2,9 +2,19 @@ import React from "react";
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { styles, formatTRY, formatDateTR } from "./styles";
 
+interface CompanyInfo {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  taxId: string;
+  taxOffice: string;
+}
+
 interface QuoteData {
   fileNumber: string;
   date: string;
+  company: CompanyInfo;
   customer: { fullName: string; email?: string | null; phone?: string | null };
   vehicle: { plate: string; brandModel: string; color: string };
   parts: { name: string; quantity: number; unitPrice: number; totalPrice: number }[];
@@ -13,12 +23,21 @@ interface QuoteData {
 }
 
 export function QuoteDocument({ data }: { data: QuoteData }) {
+  const companyName = data.company.name || "Firma Adı Belirtilmemiş";
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Text style={styles.title}>TEKLİF</Text>
-          <Text style={styles.subtitle}>KaportaAPP</Text>
+          <Text style={styles.subtitle}>{companyName}</Text>
+          {data.company.address ? <Text style={styles.companyDetail}>{data.company.address}</Text> : null}
+          {data.company.phone ? <Text style={styles.companyDetail}>Tel: {data.company.phone}</Text> : null}
+          {data.company.taxId ? (
+            <Text style={styles.companyDetail}>
+              Vergi No: {data.company.taxId}{data.company.taxOffice ? ` / ${data.company.taxOffice}` : ""}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.meta}>
@@ -29,10 +48,10 @@ export function QuoteDocument({ data }: { data: QuoteData }) {
             {data.customer.email && <Text style={styles.metaValue}>{data.customer.email}</Text>}
           </View>
           <View style={styles.metaBlock}>
-            <Text style={styles.metaLabel}>Araç</Text>
+            <Text style={styles.metaLabel}>Araç Bilgileri</Text>
             <Text style={styles.metaValue}>{data.vehicle.plate}</Text>
             <Text style={styles.metaValue}>{data.vehicle.brandModel} - {data.vehicle.color}</Text>
-            <Text style={styles.metaLabel}>Tarih</Text>
+            <Text style={styles.metaLabel}>Teklif Tarihi</Text>
             <Text style={styles.metaValue}>{formatDateTR(data.date)}</Text>
             {data.fileNumber && <><Text style={styles.metaLabel}>Dosya No</Text><Text style={styles.metaValue}>{data.fileNumber}</Text></>}
           </View>
@@ -42,10 +61,10 @@ export function QuoteDocument({ data }: { data: QuoteData }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Parçalar</Text>
             <View style={styles.tableHeader}>
-              <Text style={[styles.col1, styles.headerText]}>Parça</Text>
+              <Text style={[styles.col1, styles.headerText]}>Parça Adı</Text>
               <Text style={[styles.col2, styles.headerText]}>Adet</Text>
               <Text style={[styles.col3, styles.headerText]}>Birim Fiyat</Text>
-              <Text style={[styles.col4, styles.headerText]}>Toplam</Text>
+              <Text style={[styles.col4, styles.headerText]}>Tutar</Text>
             </View>
             {data.parts.map((p, i) => (
               <View key={i} style={styles.tableRow}>
@@ -60,12 +79,12 @@ export function QuoteDocument({ data }: { data: QuoteData }) {
 
         {data.operations.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>İşlemler</Text>
+            <Text style={styles.sectionTitle}>İşçilik</Text>
             <View style={styles.tableHeader}>
-              <Text style={[styles.col1, styles.headerText]}>İşlem</Text>
+              <Text style={[styles.col1, styles.headerText]}>İşlem Adı</Text>
               <Text style={[styles.col2, styles.headerText]}>İşçilik</Text>
               <Text style={[styles.col3, styles.headerText]}>Malzeme</Text>
-              <Text style={[styles.col4, styles.headerText]}>Toplam</Text>
+              <Text style={[styles.col4, styles.headerText]}>Tutar</Text>
             </View>
             {data.operations.map((op, i) => (
               <View key={i} style={styles.tableRow}>
@@ -80,7 +99,7 @@ export function QuoteDocument({ data }: { data: QuoteData }) {
 
         <View style={styles.summaryBox}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Alt Toplam</Text>
+            <Text style={styles.summaryLabel}>Ara Toplam</Text>
             <Text style={styles.summaryValue}>{formatTRY(data.summary.subtotal)}</Text>
           </View>
           {data.summary.discount > 0 && (
@@ -99,7 +118,9 @@ export function QuoteDocument({ data }: { data: QuoteData }) {
           </View>
         </View>
 
-        <Text style={styles.footer}>Bu teklif bilgilendirme amaçlıdır. KaportaAPP tarafından oluşturulmuştur.</Text>
+        <Text style={styles.footer}>
+          Bu teklif bilgilendirme amaçlıdır.{companyName !== "Firma Adı Belirtilmemiş" ? ` ${companyName} tarafından düzenlenmiştir.` : ""}
+        </Text>
       </Page>
     </Document>
   );

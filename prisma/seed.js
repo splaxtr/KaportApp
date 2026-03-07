@@ -173,11 +173,20 @@ async function seedAdminUser() {
   console.info("Admin kullanıcı oluşturuldu: " + email);
 }
 
+async function seedCompanySetting() {
+  const existing = await prisma.companySetting.findFirst();
+  if (!existing) {
+    await prisma.companySetting.create({ data: {} });
+    console.info("Varsayılan firma bilgileri oluşturuldu.");
+  }
+}
+
 async function main() {
   await seedRoles();
   await seedPermissions();
   await seedStatuses();
   await seedAdminUser();
+  await seedCompanySetting();
 }
 
 main()
