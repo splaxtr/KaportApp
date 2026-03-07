@@ -1,7 +1,7 @@
 // Client layout for navigation highlighting
 "use client";
 
-import React, { useEffect, useState, useTransition, useRef, useCallback } from "react";
+import React, { useEffect, useState, useTransition, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSelectedLayoutSegment } from "next/navigation";
 
@@ -71,20 +71,6 @@ function MobileBottomNav({
 }) {
   const segment = useSelectedLayoutSegment();
   const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
-
-  // Close the "Daha" menu when clicking outside
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
-      }
-    }
-    if (moreOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [moreOpen]);
 
   // Check if any secondary item is active
   const secondaryActive = secondaryItems.some(
@@ -92,86 +78,95 @@ function MobileBottomNav({
   );
 
   return (
-    <nav
-      aria-label="Mobil menü"
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0c0f1a]/95 backdrop-blur-lg md:hidden"
-    >
-      <div className="mx-auto flex max-w-md items-stretch justify-around px-1 py-1.5">
-        {primaryItems.map((item) => {
-          const isActive =
-            item.href === `/${segment ?? ""}` || (item.href === "/dashboard" && segment === null);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
-                isActive
-                  ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <span className="text-xl leading-none">{item.icon}</span>
-              <span className="text-[10px] font-medium leading-tight">{item.label}</span>
-            </Link>
-          );
-        })}
+    <>
+      <nav
+        aria-label="Mobil menü"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0c0f1a]/95 backdrop-blur-lg md:hidden"
+      >
+        <div className="mx-auto flex max-w-md items-stretch justify-around px-1 py-1.5">
+          {primaryItems.map((item) => {
+            const isActive =
+              item.href === `/${segment ?? ""}` || (item.href === "/dashboard" && segment === null);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
+                  isActive
+                    ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <span className="text-xl leading-none">{item.icon}</span>
+                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+              </Link>
+            );
+          })}
 
-        {/* "Daha" overflow menu */}
-        {secondaryItems.length > 0 && (
-          <div ref={moreRef} className="relative flex flex-1 flex-col items-center">
+          {/* "Daha" overflow button */}
+          {secondaryItems.length > 0 && (
+            <div className="flex flex-1 flex-col items-center">
+              <button
+                type="button"
+                onClick={() => setMoreOpen((v) => !v)}
+                className={`flex w-full flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
+                  moreOpen || secondaryActive
+                    ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <span className="text-xl leading-none">···</span>
+                <span className="text-[10px] font-medium leading-tight">Daha</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Popup rendered OUTSIDE nav to avoid backdrop-filter clipping on mobile Safari */}
+      {moreOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-[45] md:hidden"
+            onClick={() => setMoreOpen(false)}
+          />
+          <div className="fixed bottom-16 right-3 z-50 min-w-[180px] rounded-xl border border-white/10 bg-[#0c0f1a] p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.5)] md:hidden">
+            {secondaryItems.map((item) => {
+              const isActive = item.href === `/${segment ?? ""}`;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMoreOpen(false)}
+                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    isActive
+                      ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
+                      : "text-slate-300 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <span className="text-base">{item.icon}</span>
+                  {item.label}
+                </Link>
+              );
+            })}
+
+            {/* Logout inside overflow menu */}
             <button
               type="button"
-              onClick={() => setMoreOpen((v) => !v)}
-              className={`flex w-full flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 transition ${
-                moreOpen || secondaryActive
-                  ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
-                  : "text-slate-400 hover:text-white"
-              }`}
+              onClick={() => {
+                setMoreOpen(false);
+                onLogout();
+              }}
+              disabled={loggingOut}
+              className="mt-1 flex w-full items-center gap-2.5 rounded-lg border-t border-white/5 px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
             >
-              <span className="text-xl leading-none">···</span>
-              <span className="text-[10px] font-medium leading-tight">Daha</span>
+              <span className="text-base">⏻</span>
+              {loggingOut ? "Çıkış yapılıyor..." : "Çıkış yap"}
             </button>
-
-            {moreOpen && (
-              <div className="absolute bottom-full mb-2 right-0 min-w-[180px] rounded-xl border border-white/10 bg-[#0c0f1a]/95 p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.5)] backdrop-blur-lg">
-                {secondaryItems.map((item) => {
-                  const isActive = item.href === `/${segment ?? ""}`;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMoreOpen(false)}
-                      className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                        isActive
-                          ? "bg-white/10 text-lime-300 ring-1 ring-lime-300/40"
-                          : "text-slate-300 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      <span className="text-base">{item.icon}</span>
-                      {item.label}
-                    </Link>
-                  );
-                })}
-
-                {/* Logout inside overflow menu */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    onLogout();
-                  }}
-                  disabled={loggingOut}
-                  className="mt-1 flex w-full items-center gap-2.5 rounded-lg border-t border-white/5 px-3 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  <span className="text-base">⏻</span>
-                  {loggingOut ? "Çıkış yapılıyor..." : "Çıkış yap"}
-                </button>
-              </div>
-            )}
           </div>
-        )}
-      </div>
-    </nav>
+        </>
+      )}
+    </>
   );
 }
 
