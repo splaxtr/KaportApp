@@ -36,7 +36,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       const opsMaterial = f.operations.reduce((s: number, op: { materialCost: unknown }) => s + (op.materialCost ? Number(op.materialCost) : 0), 0);
       const subtotal = partsTotal + opsLabor + opsMaterial;
       const discount = f.discount ? Number(f.discount) : 0;
-      const taxRate = f.taxRate ? Number(f.taxRate) : 20;
+      const taxRate = f.taxRate ? Number(f.taxRate) : 0;
       const afterDiscount = subtotal - discount;
       const taxAmount = afterDiscount * (taxRate / 100);
       const grandTotal = afterDiscount + taxAmount;

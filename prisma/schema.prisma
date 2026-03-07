@@ -209,7 +209,7 @@ model VehicleFile {
   fileNumber   String?
   quickNote    String?
   discount     Decimal?  @db.Decimal(12, 2) @default(0)
-  taxRate      Decimal?  @db.Decimal(5, 2) @default(20)
+  taxRate      Decimal?  @db.Decimal(5, 2) @default(0)
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)

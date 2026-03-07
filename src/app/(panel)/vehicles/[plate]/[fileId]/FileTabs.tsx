@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, FormEvent } from "react";
+import { useEffect, useState, useRef, useMemo, FormEvent } from "react";
 import Image from "next/image";
 
 type FileData = {
@@ -1265,7 +1265,7 @@ function PricingTab({ fileId }: { fileId: number }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           discount: parseFloat(editDiscount) || 0,
-          taxRate: parseFloat(editTaxRate) || 20,
+          taxRate: parseFloat(editTaxRate) || 0,
         }),
       });
       await fetchPricing();
@@ -1273,6 +1273,16 @@ function PricingTab({ fileId }: { fileId: number }) {
       setSaving(false);
     }
   };
+
+  const liveCalc = useMemo(() => {
+    const subtotal = data?.summary.subtotal ?? 0;
+    const discount = parseFloat(editDiscount) || 0;
+    const taxRate = parseFloat(editTaxRate) || 0;
+    const afterDiscount = subtotal - discount;
+    const taxAmount = afterDiscount * (taxRate / 100);
+    const grandTotal = afterDiscount + taxAmount;
+    return { afterDiscount, taxAmount, grandTotal };
+  }, [data?.summary.subtotal, editDiscount, editTaxRate]);
 
   if (loading) return <div className="animate-pulse rounded-xl bg-white/5 p-6 h-40" />;
   if (!data) return <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">Maliyet bilgisi yüklenemedi.</div>;
@@ -1359,10 +1369,10 @@ function PricingTab({ fileId }: { fileId: number }) {
               className="w-28 rounded-md border border-white/15 bg-white/5 px-2 py-1 text-right text-sm text-white" />
           </div>
           <div className="flex justify-between text-slate-300">
-            <span>KDV Tutarı</span><span className="text-white">{formatCurrency(data.summary.taxAmount)}</span>
+            <span>KDV Tutarı</span><span className="text-white">{formatCurrency(liveCalc.taxAmount)}</span>
           </div>
           <div className="flex justify-between border-t border-white/10 pt-2 text-lg font-bold">
-            <span className="text-white">Genel Toplam</span><span className="text-lime-300">{formatCurrency(data.summary.grandTotal)}</span>
+            <span className="text-white">Genel Toplam</span><span className="text-lime-300">{formatCurrency(liveCalc.grandTotal)}</span>
           </div>
           <div className="flex flex-wrap justify-end gap-2 pt-2">
             <a href={`/api/vehicle-files/${fileId}/pdf?type=quote`} target="_blank" rel="noreferrer"

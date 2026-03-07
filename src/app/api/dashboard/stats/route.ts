@@ -67,7 +67,7 @@ export const GET = withAuth(async () => {
         COALESCE(SUM(vf."discount"), 0)::text as discount_sum,
         SUM(
           (COALESCE(p_agg.total, 0) + COALESCE(o_agg.labor, 0) + COALESCE(o_agg.material, 0) - COALESCE(vf."discount", 0))
-          * (COALESCE(vf."taxRate", 20) / 100)
+          * (COALESCE(vf."taxRate", 0) / 100)
         )::text as tax_weighted
       FROM "VehicleFile" vf
       LEFT JOIN LATERAL (

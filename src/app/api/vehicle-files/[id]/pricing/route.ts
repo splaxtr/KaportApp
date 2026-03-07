@@ -64,7 +64,7 @@ export const GET = withAuth(async (req: NextRequest, { params }) => {
 
     const subtotal = partsTotal + laborTotal + materialTotal;
     const discount = vehicleFile.discount ? Number(vehicleFile.discount) : 0;
-    const taxRate = vehicleFile.taxRate ? Number(vehicleFile.taxRate) : 20;
+    const taxRate = vehicleFile.taxRate ? Number(vehicleFile.taxRate) : 0;
     const afterDiscount = subtotal - discount;
     const taxAmount = afterDiscount * (taxRate / 100);
     const grandTotal = afterDiscount + taxAmount;
@@ -116,7 +116,7 @@ export const PATCH = withAuth(async (req: NextRequest, { params }) => {
     return NextResponse.json({
       id: updated.id,
       discount: updated.discount ? Number(updated.discount) : 0,
-      taxRate: updated.taxRate ? Number(updated.taxRate) : 20,
+      taxRate: updated.taxRate ? Number(updated.taxRate) : 0,
     });
   } catch (error) {
     return handleApiError(error, logger.error.bind(logger), { path: "/api/vehicle-files/[id]/pricing", method: "PATCH" });
