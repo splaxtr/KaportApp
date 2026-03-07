@@ -12,8 +12,15 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString });
+const pool = new Pool({ connectionString, connectionTimeoutMillis: 10000, idleTimeoutMillis: 5000 });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
+
+// Seed'in takılıp kalmasını önle
+const SEED_TIMEOUT = 60000;
+const seedTimer = setTimeout(() => {
+  console.error("Seed zaman aşımına uğradı, çıkılıyor...");
+  process.exit(1);
+}, SEED_TIMEOUT);
 
 async function seedRoles() {
   const roles = [
@@ -132,14 +139,9 @@ async function seedStatuses() {
 }
 
 async function seedAdminUser() {
-  const email = process.env.ADMIN_EMAIL;
-  const password = process.env.ADMIN_PASSWORD;
-  const fullName = process.env.ADMIN_NAME || "System Admin";
-
-  if (!email || !password) {
-    console.info("ADMIN_EMAIL veya ADMIN_PASSWORD tanımlı değil, admin kullanıcı oluşturulmadı.");
-    return;
-  }
+  const email = "admin@vurtex.com";
+  const password = "Admin123!";
+  const fullName = "System Admin";
 
   const role = await prisma.role.findUnique({ where: { key: RoleKey.system_admin } });
   if (!role) {
@@ -147,22 +149,24 @@ async function seedAdminUser() {
     return;
   }
 
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    console.info("Admin kullanıcı zaten mevcut, atlanıyor.");
+    return;
+  }
+
   const passwordHash = await bcrypt.hash(password, 12);
 
-  await prisma.user.upsert({
-    where: { email },
-    create: {
+  await prisma.user.create({
+    data: {
       email,
       passwordHash,
       fullName,
       roleId: role.id,
     },
-    update: {
-      fullName,
-      passwordHash,
-      roleId: role.id,
-    },
   });
+
+  console.info("Admin kullanıcı oluşturuldu: " + email);
 }
 
 async function main() {
@@ -177,10 +181,11 @@ main()
     console.log("Seed tamamlandı.");
   })
   .catch((e) => {
-    console.error(e);
-    process.exit(1);
+    console.error("Seed hatası:", e);
   })
   .finally(async () => {
-    await prisma.$disconnect();
-    await pool.end();
+    clearTimeout(seedTimer);
+    try { await prisma.$disconnect(); } catch {}
+    try { await pool.end(); } catch {}
+    process.exit(0);
   });
