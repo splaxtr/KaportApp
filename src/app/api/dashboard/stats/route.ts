@@ -66,7 +66,7 @@ export const GET = withAuth(async () => {
         COALESCE(SUM(o_agg.material), 0)::text as ops_material,
         COALESCE(SUM(vf."discount"), 0)::text as discount_sum,
         SUM(
-          (COALESCE(p_agg.total, 0) + COALESCE(o_agg.labor, 0) + COALESCE(o_agg.material, 0) - COALESCE(vf."discount", 0))
+          (COALESCE(p_agg.total, 0) + COALESCE(o_agg.labor, 0) + COALESCE(o_agg.material, 0))
           * (COALESCE(vf."taxRate", 0) / 100)
         )::text as tax_weighted
       FROM "VehicleFile" vf

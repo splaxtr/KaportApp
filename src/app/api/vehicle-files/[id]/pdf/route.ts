@@ -69,9 +69,8 @@ export const GET = withAuth(async (req: NextRequest, { params }) => {
     const subtotal = partsTotal + opsTotal;
     const discount = vehicleFile.discount ? Number(vehicleFile.discount) : 0;
     const taxRate = vehicleFile.taxRate ? Number(vehicleFile.taxRate) : 0;
-    const afterDiscount = subtotal - discount;
-    const taxAmount = afterDiscount * (taxRate / 100);
-    const grandTotal = afterDiscount + taxAmount;
+    const taxAmount = subtotal * (taxRate / 100);
+    const grandTotal = subtotal + taxAmount - discount;
 
     const summary = { subtotal, discount, taxRate, taxAmount, grandTotal };
 

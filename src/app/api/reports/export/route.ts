@@ -37,9 +37,8 @@ export const GET = withAuth(async (req: NextRequest) => {
       const subtotal = partsTotal + opsLabor + opsMaterial;
       const discount = f.discount ? Number(f.discount) : 0;
       const taxRate = f.taxRate ? Number(f.taxRate) : 0;
-      const afterDiscount = subtotal - discount;
-      const taxAmount = afterDiscount * (taxRate / 100);
-      const grandTotal = afterDiscount + taxAmount;
+      const taxAmount = subtotal * (taxRate / 100);
+      const grandTotal = subtotal + taxAmount - discount;
 
       return {
         "Dosya No": f.fileNumber || `D-${f.id}`,

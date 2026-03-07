@@ -20,7 +20,7 @@ type PricingSummary = {
   fileId: number;
   parts: { items: { id: number; name: string; quantity: number; unitPrice: number; totalPrice: number; status: string }[]; total: number };
   operations: { items: { id: number; title: string; laborCost: number; materialCost: number; total: number; status: string }[]; laborTotal: number; materialTotal: number; total: number };
-  summary: { subtotal: number; discount: number; taxRate: number; afterDiscount: number; taxAmount: number; grandTotal: number };
+  summary: { subtotal: number; discount: number; taxRate: number; taxAmount: number; grandTotal: number };
 };
 type PhotoData = { id: number; title?: string | null; url: string; note?: string | null };
 
@@ -1278,10 +1278,9 @@ function PricingTab({ fileId }: { fileId: number }) {
     const subtotal = data?.summary.subtotal ?? 0;
     const discount = parseFloat(editDiscount) || 0;
     const taxRate = parseFloat(editTaxRate) || 0;
-    const afterDiscount = subtotal - discount;
-    const taxAmount = afterDiscount * (taxRate / 100);
-    const grandTotal = afterDiscount + taxAmount;
-    return { afterDiscount, taxAmount, grandTotal };
+    const taxAmount = subtotal * (taxRate / 100);
+    const grandTotal = subtotal + taxAmount - discount;
+    return { taxAmount, grandTotal };
   }, [data?.summary.subtotal, editDiscount, editTaxRate]);
 
   if (loading) return <div className="animate-pulse rounded-xl bg-white/5 p-6 h-40" />;
