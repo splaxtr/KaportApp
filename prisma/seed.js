@@ -139,9 +139,9 @@ async function seedStatuses() {
 }
 
 async function seedAdminUser() {
-  const email = "admin@vurtex.com";
-  const password = "Admin123!";
-  const fullName = "System Admin";
+  const email = process.env.ADMIN_EMAIL || "admin@vurtex.com";
+  const password = process.env.ADMIN_PASSWORD || "Admin123!";
+  const fullName = process.env.ADMIN_NAME || "System Admin";
 
   const role = await prisma.role.findUnique({ where: { key: RoleKey.system_admin } });
   if (!role) {
@@ -149,13 +149,17 @@ async function seedAdminUser() {
     return;
   }
 
+  const passwordHash = await bcrypt.hash(password, 12);
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    console.info("Admin kullanıcı zaten mevcut, atlanıyor.");
+    await prisma.user.update({
+      where: { email },
+      data: { passwordHash, fullName, roleId: role.id },
+    });
+    console.info("Admin kullanıcı güncellendi: " + email);
     return;
   }
-
-  const passwordHash = await bcrypt.hash(password, 12);
 
   await prisma.user.create({
     data: {
