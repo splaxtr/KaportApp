@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, useRef, FormEvent } from "react";
 import Image from "next/image";
 
 type FileData = {
@@ -50,6 +50,57 @@ const tabs = [
 ] as const;
 
 type TabKey = (typeof tabs)[number]["key"];
+
+function InlineCell({ value, onSave, type = "text", prefix, placeholder, className }: {
+  value: string | number | null | undefined;
+  onSave: (val: string) => void;
+  type?: "text" | "number";
+  prefix?: string;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value ?? ""));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setDraft(String(value ?? "")); }, [value]);
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+
+  function commit() {
+    setEditing(false);
+    if (draft !== String(value ?? "")) onSave(draft);
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type={type}
+        step={type === "number" ? "0.01" : undefined}
+        min={type === "number" ? "0" : undefined}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setDraft(String(value ?? "")); setEditing(false); } }}
+        className={`w-full rounded border border-lime-300/50 bg-white/10 px-2 py-1 text-sm text-white outline-none ${className ?? ""}`}
+      />
+    );
+  }
+
+  const display = value != null && value !== "" && value !== 0
+    ? `${prefix ?? ""}${typeof value === "number" ? value.toLocaleString("tr-TR") : value}`
+    : placeholder ?? "—";
+  const dimmed = value == null || value === "" || value === 0;
+
+  return (
+    <span
+      onClick={() => setEditing(true)}
+      className={`cursor-pointer rounded px-2 py-1 transition hover:bg-white/10 ${dimmed ? "text-slate-500" : ""} ${className ?? ""}`}
+    >
+      {display}
+    </span>
+  );
+}
 
 export function FileTabs({
   fileId,
@@ -513,6 +564,32 @@ export function FileTabs({
     setSelectedOpIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   }
 
+  async function patchPart(id: number, data: Record<string, unknown>) {
+    try {
+      const res = await fetch(`/api/parts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) return;
+      const refreshed = await fetch(`/api/vehicle-files/parts?fileId=${fileId}`, { cache: "no-store" }).then((r) => r.json());
+      setParts(refreshed);
+    } catch { /* silent */ }
+  }
+
+  async function patchOp(id: number, data: Record<string, unknown>) {
+    try {
+      const res = await fetch(`/api/operations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) return;
+      const refreshed = await fetch(`/api/vehicle-files/operations?fileId=${fileId}`, { cache: "no-store" }).then((r) => r.json());
+      setOps(refreshed);
+    } catch { /* silent */ }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/5 p-2">
@@ -639,74 +716,84 @@ export function FileTabs({
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-white/10">
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-hidden rounded-xl border border-white/10">
             <div className="overflow-x-auto">
-              <table className="min-w-[700px] divide-y divide-white/10 text-sm">
-              <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
-                <tr>
-                  <th className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedPartIds.length > 0 && selectedPartIds.length === parts.length}
-                      onChange={(e) => setSelectedPartIds(e.target.checked ? parts.map((p) => p.id) : [])}
-                      className="h-4 w-4 rounded border-white/30 bg-white/10 text-lime-400 focus:ring-lime-400/60"
-                    />
-                  </th>
-                  <th className="px-4 py-3">Parça</th>
-                  <th className="px-4 py-3">Adet</th>
-                  <th className="px-4 py-3 text-right">Birim Fiyat</th>
-                  <th className="px-4 py-3 text-right">Toplam</th>
-                  <th className="px-4 py-3">Durum</th>
-                  <th className="px-4 py-3 text-right">İşlem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {parts.length === 0 ? (
+              <table className="w-full divide-y divide-white/10 text-sm">
+                <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
                   <tr>
-                    <td colSpan={7} className="px-4 py-3 text-center text-slate-300">
-                      Parça kaydı yok.
-                    </td>
+                    <th className="px-4 py-3 w-10">
+                      <input type="checkbox" checked={selectedPartIds.length > 0 && selectedPartIds.length === parts.length} onChange={(e) => setSelectedPartIds(e.target.checked ? parts.map((p) => p.id) : [])} className="h-4 w-4 rounded border-white/30 bg-white/10 text-lime-400 focus:ring-lime-400/60" />
+                    </th>
+                    <th className="px-4 py-3">Parça</th>
+                    <th className="px-4 py-3 w-20">Adet</th>
+                    <th className="px-4 py-3 text-right w-32">Birim Fiyat</th>
+                    <th className="px-4 py-3 text-right w-32">Toplam</th>
+                    <th className="px-4 py-3 w-28">Durum</th>
+                    <th className="px-4 py-3 text-right w-16"></th>
                   </tr>
-                ) : (
-                  parts.map((p) => (
-                    <tr key={p.id} className="hover:bg-white/5">
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedPartIds.includes(p.id)}
-                          onChange={() => togglePart(p.id)}
-                          className="h-4 w-4 rounded border-white/30 bg-white/10 text-lime-400 focus:ring-lime-400/60"
-                        />
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {parts.length === 0 ? (
+                    <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-400">Parça kaydı yok.</td></tr>
+                  ) : parts.map((p) => (
+                    <tr key={p.id} className="hover:bg-white/5 group">
+                      <td className="px-4 py-2">
+                        <input type="checkbox" checked={selectedPartIds.includes(p.id)} onChange={() => togglePart(p.id)} className="h-4 w-4 rounded border-white/30 bg-white/10 text-lime-400 focus:ring-lime-400/60" />
                       </td>
-                      <td className="px-4 py-3 text-white">{p.name}</td>
-                      <td className="px-4 py-3 text-slate-200">{p.quantity}</td>
-                      <td className="px-4 py-3 text-right text-slate-200">{p.unitPrice != null ? `₺${p.unitPrice.toLocaleString("tr-TR")}` : "—"}</td>
-                      <td className="px-4 py-3 text-right font-medium text-white">{p.totalPrice != null ? `₺${p.totalPrice.toLocaleString("tr-TR")}` : "—"}</td>
-                      <td className="px-4 py-3 text-slate-200">{p.status}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(p)}
-                            className="rounded-md border border-white/15 px-3 py-1 text-slate-200 hover:border-lime-300/70 hover:text-white"
-                          >
-                            Düzenle
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deletePart(p.id)}
-                            className="rounded-md border border-red-500/50 px-3 py-1 text-red-200 hover:bg-red-500/10"
-                          >
-                            Sil
-                          </button>
-                        </div>
+                      <td className="px-4 py-2 text-white font-medium">{p.name}</td>
+                      <td className="px-2 py-2">
+                        <InlineCell value={p.quantity} type="number" onSave={(v) => patchPart(p.id, { quantity: Number(v) || 1 })} className="w-16 text-center" />
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <InlineCell value={p.unitPrice} type="number" prefix="₺" placeholder="Fiyat gir" onSave={(v) => patchPart(p.id, { unitPrice: v ? Number(v) : null })} className="w-24 text-right" />
+                      </td>
+                      <td className="px-4 py-2 text-right font-medium text-white">
+                        {p.totalPrice != null ? `₺${p.totalPrice.toLocaleString("tr-TR")}` : "—"}
+                      </td>
+                      <td className="px-4 py-2 text-slate-200 text-xs">{p.status}</td>
+                      <td className="px-4 py-2 text-right">
+                        <button type="button" onClick={() => deletePart(p.id)} className="rounded-md border border-red-500/40 px-2 py-1 text-xs text-red-300 opacity-0 group-hover:opacity-100 transition hover:bg-red-500/10">Sil</button>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {parts.length === 0 ? (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-slate-400">Parça kaydı yok.</div>
+            ) : parts.map((p) => (
+              <div key={p.id} className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={selectedPartIds.includes(p.id)} onChange={() => togglePart(p.id)} className="h-4 w-4 rounded border-white/30 bg-white/10 text-lime-400 focus:ring-lime-400/60" />
+                    <span className="text-sm font-semibold text-white">{p.name}</span>
+                  </div>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-slate-300">{p.status}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <span className="block text-slate-400 mb-1">Adet</span>
+                    <InlineCell value={p.quantity} type="number" onSave={(v) => patchPart(p.id, { quantity: Number(v) || 1 })} className="text-center" />
+                  </div>
+                  <div>
+                    <span className="block text-slate-400 mb-1">Birim Fiyat</span>
+                    <InlineCell value={p.unitPrice} type="number" prefix="₺" placeholder="—" onSave={(v) => patchPart(p.id, { unitPrice: v ? Number(v) : null })} />
+                  </div>
+                  <div>
+                    <span className="block text-slate-400 mb-1">Toplam</span>
+                    <span className="px-2 py-1 text-sm font-medium text-white">{p.totalPrice != null ? `₺${p.totalPrice.toLocaleString("tr-TR")}` : "—"}</span>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => deletePart(p.id)} className="rounded-md border border-red-500/40 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10">Sil</button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -840,74 +927,82 @@ export function FileTabs({
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-white/10">
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-hidden rounded-xl border border-white/10">
             <div className="overflow-x-auto">
-              <table className="min-w-[700px] divide-y divide-white/10 text-sm">
-              <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
-                <tr>
-                  <th className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedOpIds.length > 0 && selectedOpIds.length === ops.length}
-                      onChange={(e) => setSelectedOpIds(e.target.checked ? ops.map((o: any) => o.id) : [])}
-                      className="h-4 w-4 rounded border-white/30 bg-white/10 text-lime-400 focus:ring-lime-400/60"
-                    />
-                  </th>
-                  <th className="px-4 py-3">İşlem</th>
-                  <th className="px-4 py-3">Not</th>
-                  <th className="px-4 py-3 text-right">İşçilik</th>
-                  <th className="px-4 py-3 text-right">Malzeme</th>
-                  <th className="px-4 py-3">Durum</th>
-                  <th className="px-4 py-3 text-right">Eylem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {ops.length === 0 ? (
+              <table className="w-full divide-y divide-white/10 text-sm">
+                <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-slate-300">
                   <tr>
-                    <td colSpan={7} className="px-4 py-3 text-center text-slate-300">
-                      İşlem kaydı yok.
-                    </td>
+                    <th className="px-4 py-3 w-10">
+                      <input type="checkbox" checked={selectedOpIds.length > 0 && selectedOpIds.length === ops.length} onChange={(e) => setSelectedOpIds(e.target.checked ? ops.map((o: OperationData) => o.id) : [])} className="h-4 w-4 rounded border-white/30 bg-white/10 text-lime-400 focus:ring-lime-400/60" />
+                    </th>
+                    <th className="px-4 py-3">İşlem</th>
+                    <th className="px-4 py-3 text-right w-32">İşçilik</th>
+                    <th className="px-4 py-3 text-right w-32">Malzeme</th>
+                    <th className="px-4 py-3 w-28">Durum</th>
+                    <th className="px-4 py-3 text-right w-16"></th>
                   </tr>
-                ) : (
-                  ops.map((op: any) => (
-                    <tr key={op.id} className="hover:bg-white/5">
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedOpIds.includes(op.id)}
-                          onChange={() => toggleOp(op.id)}
-                          className="h-4 w-4 rounded border-white/30 bg-white/10 text-lime-400 focus:ring-lime-400/60"
-                        />
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {ops.length === 0 ? (
+                    <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-400">İşlem kaydı yok.</td></tr>
+                  ) : ops.map((op: OperationData) => (
+                    <tr key={op.id} className="hover:bg-white/5 group">
+                      <td className="px-4 py-2">
+                        <input type="checkbox" checked={selectedOpIds.includes(op.id)} onChange={() => toggleOp(op.id)} className="h-4 w-4 rounded border-white/30 bg-white/10 text-lime-400 focus:ring-lime-400/60" />
                       </td>
-                      <td className="px-4 py-3 text-white">{op.title}</td>
-                      <td className="px-4 py-3 text-slate-200">{op.note || "—"}</td>
-                      <td className="px-4 py-3 text-right text-slate-200">{op.laborCost != null ? `₺${op.laborCost.toLocaleString("tr-TR")}` : "—"}</td>
-                      <td className="px-4 py-3 text-right text-slate-200">{op.materialCost != null ? `₺${op.materialCost.toLocaleString("tr-TR")}` : "—"}</td>
-                      <td className="px-4 py-3 text-slate-200">{op.status}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => startEditOp(op)}
-                            className="rounded-md border border-white/15 px-3 py-1 text-slate-200 hover:border-lime-300/70 hover:text-white"
-                          >
-                            Düzenle
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteOp(op.id)}
-                            className="rounded-md border border-red-500/50 px-3 py-1 text-red-200 hover:bg-red-500/10"
-                          >
-                            Sil
-                          </button>
-                        </div>
+                      <td className="px-4 py-2">
+                        <span className="text-white font-medium">{op.title}</span>
+                        {op.note && <span className="block text-xs text-slate-400 mt-0.5">{op.note}</span>}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <InlineCell value={op.laborCost} type="number" prefix="₺" placeholder="İşçilik" onSave={(v) => patchOp(op.id, { laborCost: v ? Number(v) : null })} className="w-24 text-right" />
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <InlineCell value={op.materialCost} type="number" prefix="₺" placeholder="Malzeme" onSave={(v) => patchOp(op.id, { materialCost: v ? Number(v) : null })} className="w-24 text-right" />
+                      </td>
+                      <td className="px-4 py-2 text-slate-200 text-xs">{op.status}</td>
+                      <td className="px-4 py-2 text-right">
+                        <button type="button" onClick={() => deleteOp(op.id)} className="rounded-md border border-red-500/40 px-2 py-1 text-xs text-red-300 opacity-0 group-hover:opacity-100 transition hover:bg-red-500/10">Sil</button>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {ops.length === 0 ? (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-slate-400">İşlem kaydı yok.</div>
+            ) : ops.map((op: OperationData) => (
+              <div key={op.id} className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={selectedOpIds.includes(op.id)} onChange={() => toggleOp(op.id)} className="h-4 w-4 rounded border-white/30 bg-white/10 text-lime-400 focus:ring-lime-400/60" />
+                    <div>
+                      <span className="text-sm font-semibold text-white">{op.title}</span>
+                      {op.note && <span className="block text-xs text-slate-400">{op.note}</span>}
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-slate-300">{op.status}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="block text-slate-400 mb-1">İşçilik</span>
+                    <InlineCell value={op.laborCost} type="number" prefix="₺" placeholder="—" onSave={(v) => patchOp(op.id, { laborCost: v ? Number(v) : null })} />
+                  </div>
+                  <div>
+                    <span className="block text-slate-400 mb-1">Malzeme</span>
+                    <InlineCell value={op.materialCost} type="number" prefix="₺" placeholder="—" onSave={(v) => patchOp(op.id, { materialCost: v ? Number(v) : null })} />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => deleteOp(op.id)} className="rounded-md border border-red-500/40 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10">Sil</button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
