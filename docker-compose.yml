@@ -7,14 +7,14 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=${REDIS_URL}
-      - ADMIN_EMAIL=${ADMIN_EMAIL}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - ADMIN_NAME=${ADMIN_NAME:-System Admin}
       - UPLOAD_DIR=/app/uploads
       - UPLOAD_URL_PREFIX=/api/uploads
       - LOG_DIR=/app/logs
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - HOSTNAME=0.0.0.0
+      - NODE_ENV=production
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - TRUST_PROXY=${TRUST_PROXY:-true}
     volumes:
       - uploads:/app/uploads
       - logs:/app/logs

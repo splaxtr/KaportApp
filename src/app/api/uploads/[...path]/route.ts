@@ -41,8 +41,9 @@ export const GET = withAuth(
     const filePath = path.resolve(UPLOAD_DIR, requestedPath);
     const resolvedUploadDir = path.resolve(UPLOAD_DIR);
 
-    // Dosya yolunun UPLOAD_DIR içinde kaldığını doğrula
-    if (!filePath.startsWith(resolvedUploadDir + path.sep) && filePath !== resolvedUploadDir) {
+    // Dosya yolunun UPLOAD_DIR içinde kaldığını doğrula (symlink bypass koruması)
+    const relative = path.relative(resolvedUploadDir, filePath);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) {
       return NextResponse.json({ error: "Geçersiz yol" }, { status: 400 });
     }
 

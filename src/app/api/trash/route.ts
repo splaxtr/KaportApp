@@ -175,26 +175,65 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     if (!body || !("action" in body)) return badRequest("Geçersiz istek");
 
     if (body.action === "purgeAll") {
-      // Purge in dependency order
-      const files = await prisma.vehicleFile.findMany({ where: { deletedAt: { not: null } } });
-      for (const file of files) {
-        await purgeVehicleFile(file.id);
+      // Delete photos' files from storage first
+      const photosToDelete = await prisma.photo.findMany({
+        where: { deletedAt: { not: null } },
+        select: { url: true },
+      });
+      const vfPhotos = await prisma.photo.findMany({
+        where: { vehicleFile: { deletedAt: { not: null } } },
+        select: { url: true },
+      });
+      const allPhotoUrls = [...photosToDelete, ...vfPhotos];
+      await Promise.all(allPhotoUrls.map((p) => deleteFile(p.url).catch(() => {})));
+
+      // Purge in dependency order using batch deletes
+      const deletedFileIds = (await prisma.vehicleFile.findMany({
+        where: { deletedAt: { not: null } },
+        select: { id: true },
+      })).map((f: { id: number }) => f.id);
+
+      if (deletedFileIds.length > 0) {
+        await prisma.$transaction([
+          prisma.reviewToken.deleteMany({ where: { vehicleFileId: { in: deletedFileIds } } }),
+          prisma.part.deleteMany({ where: { vehicleFileId: { in: deletedFileIds } } }),
+          prisma.operation.deleteMany({ where: { vehicleFileId: { in: deletedFileIds } } }),
+          prisma.photo.deleteMany({ where: { vehicleFileId: { in: deletedFileIds } } }),
+          prisma.appointment.deleteMany({ where: { vehicleFileId: { in: deletedFileIds } } }),
+        ]);
+        await prisma.vehicleFile.deleteMany({ where: { id: { in: deletedFileIds } } });
       }
-      const vehicles = await prisma.vehicle.findMany({ where: { deletedAt: { not: null } } });
-      for (const v of vehicles) {
-        await purgeVehicle(v.id);
+
+      // Batch delete orphaned child records and then parents
+      await prisma.$transaction([
+        prisma.operation.deleteMany({ where: { deletedAt: { not: null } } }),
+        prisma.part.deleteMany({ where: { deletedAt: { not: null } } }),
+        prisma.photo.deleteMany({ where: { deletedAt: { not: null } } }),
+      ]);
+
+      const deletedVehicleIds = (await prisma.vehicle.findMany({
+        where: { deletedAt: { not: null } },
+        select: { id: true },
+      })).map((v: { id: number }) => v.id);
+      if (deletedVehicleIds.length > 0) {
+        await prisma.vehicle.deleteMany({ where: { id: { in: deletedVehicleIds } } });
       }
-      const customers = await prisma.customer.findMany({ where: { deletedAt: { not: null } } });
-      for (const c of customers) {
-        await purgeCustomer(c.id);
+
+      const deletedCustomerIds = (await prisma.customer.findMany({
+        where: { deletedAt: { not: null } },
+        select: { id: true },
+      })).map((c: { id: number }) => c.id);
+      if (deletedCustomerIds.length > 0) {
+        await prisma.$transaction([
+          prisma.customerPhone.deleteMany({ where: { customerId: { in: deletedCustomerIds } } }),
+          prisma.customerAddress.deleteMany({ where: { customerId: { in: deletedCustomerIds } } }),
+          prisma.customerNote.deleteMany({ where: { customerId: { in: deletedCustomerIds } } }),
+        ]);
+        await prisma.customer.deleteMany({ where: { id: { in: deletedCustomerIds } } });
       }
-      await prisma.operation.deleteMany({ where: { deletedAt: { not: null } } });
-      await prisma.part.deleteMany({ where: { deletedAt: { not: null } } });
-      await prisma.photo.deleteMany({ where: { deletedAt: { not: null } } });
-      const experts = await prisma.expert.findMany({ where: { deletedAt: { not: null } } });
-      for (const e of experts) {
-        await purgeExpert(e.id);
-      }
+
+      await prisma.vehicleFile.updateMany({ where: { expert: { deletedAt: { not: null } } }, data: { expertId: null } });
+      await prisma.expert.deleteMany({ where: { deletedAt: { not: null } } });
       logger.audit("purge_all", "trash", getAuditContext(req, user));
       return json({ ok: true });
     }

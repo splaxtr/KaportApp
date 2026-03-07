@@ -51,23 +51,27 @@ export default function CalendarClient() {
   const [form, setForm] = useState({ title: "", date: "", endDate: "", type: "other" as string, notes: "" });
   const [saving, setSaving] = useState(false);
 
-  const fetchAppointments = async (date: Date) => {
+  const fetchAppointments = async (date: Date, signal?: AbortSignal) => {
     setLoading(true);
     const year = date.getFullYear();
     const month = date.getMonth();
     const from = new Date(year, month - 1, 1).toISOString();
     const to = new Date(year, month + 2, 0).toISOString();
     try {
-      const res = await fetch(`/api/appointments?from=${from}&to=${to}`);
+      const res = await fetch(`/api/appointments?from=${from}&to=${to}`, { signal });
       if (res.ok) setAppointments(await res.json());
-    } catch {
-      // Ağ hatası - mevcut randevuları koru
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchAppointments(currentDate); }, [currentDate.getMonth(), currentDate.getFullYear()]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchAppointments(currentDate, controller.signal);
+    return () => controller.abort();
+  }, [currentDate.getMonth(), currentDate.getFullYear()]);
 
   const navigate = (dir: number) => {
     const d = new Date(currentDate);
@@ -108,7 +112,7 @@ export default function CalendarClient() {
   };
 
   const saveAppointment = async () => {
-    if (!form.title || !form.date) return;
+    if (!form.title || !form.date || saving) return;
     setSaving(true);
     try {
       const res = await fetch("/api/appointments", {

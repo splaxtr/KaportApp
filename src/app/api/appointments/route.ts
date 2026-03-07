@@ -44,7 +44,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   } catch (error) {
     return handleApiError(error, logger.error.bind(logger), { path: "/api/appointments", method: "GET" });
   }
-});
+}, { requiredPermissions: ["vehicleFiles.manage"] });
 
 // POST: Yeni randevu oluştur
 export const POST = withAuth(async (req: NextRequest) => {
@@ -77,4 +77,4 @@ export const POST = withAuth(async (req: NextRequest) => {
   } catch (error) {
     return handleApiError(error, logger.error.bind(logger), { path: "/api/appointments", method: "POST" });
   }
-});
+}, { requiredPermissions: ["vehicleFiles.manage"] });

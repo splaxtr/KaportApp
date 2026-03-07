@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { MobileCard, MobileCardList, CardAction, CardField } from "@/components/MobileCard";
 
 type Customer = {
@@ -41,7 +41,7 @@ export default function CustomersClient() {
     note: "",
   });
 
-  const filtered = useMemo(() => customers, [customers]);
+  const filtered = customers;
 
   async function loadCustomers(query?: string) {
     setLoading(true);
@@ -71,6 +71,7 @@ export default function CustomersClient() {
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
+    if (creating) return;
     if (!form.fullName.trim()) {
       setError("Ad Soyad zorunludur.");
       return;
@@ -112,6 +113,7 @@ export default function CustomersClient() {
       setForm({ fullName: "", email: "", phone: "", altPhone: "", address: "", tcVkn: "", note: "" });
       setShowModal(false);
       setInfo("Müşteri kaydedildi.");
+      setTimeout(() => setInfo(""), 3000);
       await loadCustomers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bilinmeyen hata");
@@ -132,6 +134,7 @@ export default function CustomersClient() {
         throw new Error(body?.error || "Silme işlemi başarısız");
       }
       setInfo("Müşteri silindi.");
+      setTimeout(() => setInfo(""), 3000);
       await loadCustomers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bilinmeyen hata");

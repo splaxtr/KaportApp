@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { normalizePlate } from "@/lib/plate";
 import { MobileCard, MobileCardList, CardAction } from "@/components/MobileCard";
 
@@ -71,8 +71,8 @@ export default function VehiclesClient() {
   const [newExpert, setNewExpert] = useState({ fullName: "", phone: "", email: "", company: "" });
   const [showQuickExpert, setShowQuickExpert] = useState(false);
 
-  const filteredVehicles = useMemo(() => vehicles, [vehicles]);
-  const fileCards = useMemo(() => files, [files]);
+  const filteredVehicles = vehicles;
+  const fileCards = files;
 
   async function loadVehicles(query?: string) {
     setLoading(true);
@@ -226,6 +226,7 @@ export default function VehiclesClient() {
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
+    if (creating) return;
     setCreateError(null);
     setCreateSuccess(null);
     if (!newPlate.trim()) {

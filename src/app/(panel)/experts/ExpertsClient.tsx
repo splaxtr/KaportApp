@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { MobileCard, MobileCardList, CardAction, CardField } from "@/components/MobileCard";
 
 type Expert = {
@@ -37,7 +37,7 @@ export default function ExpertsClient() {
     note: "",
   });
 
-  const filtered = useMemo(() => experts, [experts]);
+  const filtered = experts;
 
   async function loadExperts(query?: string) {
     setLoading(true);
@@ -73,6 +73,7 @@ export default function ExpertsClient() {
 
   async function onSave(e: FormEvent) {
     e.preventDefault();
+    if (creating) return;
     if (!form.fullName.trim()) {
       setError("Ad Soyad zorunludur.");
       return;

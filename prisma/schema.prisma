@@ -138,7 +138,7 @@ model CustomerPhone {
   phone      String
   customerId Int
 
-  customer Customer @relation(fields: [customerId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([phone])
   @@index([customerId])
@@ -156,7 +156,7 @@ model CustomerAddress {
   postalCode String?
   customerId Int
 
-  customer Customer @relation(fields: [customerId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([customerId])
 }
@@ -170,8 +170,8 @@ model CustomerNote {
   customerId Int
   authorId   Int?
 
-  customer Customer @relation(fields: [customerId], references: [id])
-  author   User?    @relation(fields: [authorId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  author   User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
   @@index([authorId])
@@ -211,8 +211,8 @@ model VehicleFile {
   discount     Decimal?  @db.Decimal(12, 2) @default(0)
   taxRate      Decimal?  @db.Decimal(5, 2) @default(20)
 
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
-  customer Customer @relation(fields: [customerId], references: [id])
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   expert   Expert? @relation(fields: [expertId], references: [id], onDelete: SetNull)
 
   parts        Part[]
@@ -254,8 +254,8 @@ model Part {
   vehicleFileId Int
   statusId      Int
 
-  vehicleFile VehicleFile @relation(fields: [vehicleFileId], references: [id])
-  status      PartStatus  @relation(fields: [statusId], references: [id])
+  vehicleFile VehicleFile @relation(fields: [vehicleFileId], references: [id], onDelete: Cascade)
+  status      PartStatus  @relation(fields: [statusId], references: [id], onDelete: Restrict)
 
   @@index([vehicleFileId])
   @@index([statusId])
@@ -287,8 +287,8 @@ model Operation {
   vehicleFileId Int
   statusId      Int
 
-  vehicleFile VehicleFile    @relation(fields: [vehicleFileId], references: [id])
-  status      OperationStatus @relation(fields: [statusId], references: [id])
+  vehicleFile VehicleFile    @relation(fields: [vehicleFileId], references: [id], onDelete: Cascade)
+  status      OperationStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
 
   @@index([vehicleFileId])
   @@index([statusId])
@@ -306,8 +306,8 @@ model Photo {
   vehicleFileId Int
   uploadedById  Int?
 
-  vehicleFile VehicleFile @relation(fields: [vehicleFileId], references: [id])
-  uploadedBy  User?       @relation(fields: [uploadedById], references: [id])
+  vehicleFile VehicleFile @relation(fields: [vehicleFileId], references: [id], onDelete: Cascade)
+  uploadedBy  User?       @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@index([vehicleFileId])
   @@index([uploadedById])
@@ -340,7 +340,7 @@ model ReviewToken {
   expiresAt     DateTime?
   revokedAt     DateTime?
 
-  vehicleFile VehicleFile @relation(fields: [vehicleFileId], references: [id])
+  vehicleFile VehicleFile @relation(fields: [vehicleFileId], references: [id], onDelete: Cascade)
   accessKeys ReviewAccessKey[]
 
   @@index([vehicleFileId])
@@ -375,9 +375,9 @@ model Appointment {
   customerId    Int?
   assignedToId  Int?
 
-  vehicleFile VehicleFile? @relation(fields: [vehicleFileId], references: [id])
-  customer    Customer?    @relation(fields: [customerId], references: [id])
-  assignedTo  User?        @relation(fields: [assignedToId], references: [id])
+  vehicleFile VehicleFile? @relation(fields: [vehicleFileId], references: [id], onDelete: SetNull)
+  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedTo  User?        @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
 
   @@index([date])
   @@index([vehicleFileId])
@@ -396,7 +396,7 @@ model Notification {
   link      String?
   readAt    DateTime?
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([readAt])

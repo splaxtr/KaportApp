@@ -182,7 +182,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [loggingOut, startLogout] = useTransition();
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    const controller = new AbortController();
+    fetch("/api/auth/me", { signal: controller.signal })
       .then((r) => {
         if (!r.ok) {
           router.replace("/");
@@ -194,9 +195,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         if (data?.role) setRole(data.role);
         if (data?.email) setEmail(data.email);
       })
-      .catch(() => {
+      .catch((e) => {
+        if ((e as Error).name === "AbortError") return;
         router.replace("/");
       });
+    return () => controller.abort();
   }, [router]);
 
   const handleLogout = useCallback(() => {
