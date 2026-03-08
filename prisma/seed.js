@@ -3,7 +3,6 @@ try { require("dotenv").config(); } catch { /* Docker ortamında dotenv gerekmez
 const { PrismaClient, RoleKey } = require("@prisma/client");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { Pool } = require("pg");
-const bcrypt = require("bcryptjs");
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -138,41 +137,6 @@ async function seedStatuses() {
   }
 }
 
-async function seedAdminUser() {
-  const email = process.env.ADMIN_EMAIL || "admin@vurtex.com";
-  const password = process.env.ADMIN_PASSWORD || "Admin123!";
-  const fullName = process.env.ADMIN_NAME || "System Admin";
-
-  const role = await prisma.role.findUnique({ where: { key: RoleKey.system_admin } });
-  if (!role) {
-    console.warn("System admin rolü bulunamadı, admin kullanıcı eklenemedi.");
-    return;
-  }
-
-  const passwordHash = await bcrypt.hash(password, 12);
-
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    await prisma.user.update({
-      where: { email },
-      data: { passwordHash, fullName, roleId: role.id },
-    });
-    console.info("Admin kullanıcı güncellendi: " + email);
-    return;
-  }
-
-  await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      fullName,
-      roleId: role.id,
-    },
-  });
-
-  console.info("Admin kullanıcı oluşturuldu: " + email);
-}
-
 async function seedCompanySetting() {
   const existing = await prisma.companySetting.findFirst();
   if (!existing) {
@@ -185,7 +149,6 @@ async function main() {
   await seedRoles();
   await seedPermissions();
   await seedStatuses();
-  await seedAdminUser();
   await seedCompanySetting();
 }
 
